@@ -1,16 +1,72 @@
-# React + Vite
+Akira Gakuin Management System (AGMS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[GitHub last commit] [GitHub repo size] [GitHub issues] [GitHub stars]
+[GitHub license]
 
-Currently, two official plugins are available:
+Akira Gakuin Management System (AGMS) adalah aplikasi internal untuk
+mengelola data siswa, dokumen, dan proses seleksi Akira Gakuin.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+🚀 Features
 
-## React Compiler
+1. Student Management
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+-   Tambah/edit/hapus data siswa
+-   Informasi pribadi, alamat, kontak, sekolah, wali murid
+-   Dynamic form pekerjaan orang tua
+-   Status berdasarkan hasil seleksi
 
-## Expanding the ESLint configuration
+2. Document Management
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+-   Upload foto, KK, raport, sertifikat
+-   Penyimpanan aman di Supabase Storage
+
+3. Selection Process
+
+-   Input hasil SO
+-   Input hasil Shiken
+-   Input hasil Interview
+-   Status otomatis
+
+4. Data Export
+
+-   Export ke Excel (XLSX)
+-   Export berdasarkan tahap seleksi
+
+5. Access & Security
+
+-   Login via Supabase Auth
+-   Proteksi halaman admin
+-   Validasi formulir
+
+🛠️ Tech Stack
+
+-   ReactJS
+-   Supabase
+-   TailwindCSS
+-   React Router
+-   XLSX.js
+
+📂 Project Structure
+
+src/ ├── components/ ├── pages/ ├── hooks/ ├── lib/ ├── utils/ └──
+App.jsx
+
+📦 Installation
+
+git clone https://github.com/username/repo-name.git cd repo-name npm
+install npm run dev
+
+🔧 Environment Variables
+
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+▶️ Run the App
+
+npm run dev
+
+📝 Notes
+
+-   Admin only access
+-   Dokumen tersimpan di Supabase Storage
+-   Sistem terus dikembangkan
