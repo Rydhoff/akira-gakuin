@@ -1,0 +1,52 @@
+@import "tailwindcss";
+:root {
+  --akira-red: #C2001A;
+  --akira-red-dark: #8B0013;
+  --akira-gold: #FFCE3A;
+  --akira-gray: #1A1A1A;
+  --akira-bg: #F7F7F7;
+  --akira-border: #D6D6D6;
+}
+
+/* GLOBAL */
+html, body, #root {
+  background: var(--akira-bg);
+  color: var(--akira-gray);
+}
+
+/* INPUTS */
+input, select, textarea {
+  @apply rounded-xl px-3 py-2 text-sm bg-white
+         transition outline-none shadow-sm;
+  border: 1px solid var(--akira-border);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--akira-red);
+  box-shadow: 0 0 0 2px rgba(194, 0, 26, 0.25);
+}
+
+/* BUTTON DEFAULT (fallback) */
+button:not([class*="bg-"]) {
+  background: var(--akira-red);
+  color: white;
+}
+/* button:hover {
+  background: var(--akira-red-dark);
+} */
+button:active {
+  background: var(--akira-gray);
+}
+
+/* CARDS */
+.card {
+  background: white;
+  border: 1px solid var(--akira-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+/* TABLE */
+thead th {
+  background: rgba(255, 0, 0, 0.115);
+  border-bottom: 1px;
+}
