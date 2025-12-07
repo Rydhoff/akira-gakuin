@@ -2,12 +2,6 @@
 
 **Modern Student & Selection Management Platform**
 
-![Last
-Commit](https://img.shields.io/github/last-commit/username/repo-name?color=purple)
-![Repo
-Size](https://img.shields.io/github/repo-size/username/repo-name?color=blue)
-![Issues](https://img.shields.io/github/issues/username/repo-name?color=yellow)
-![Stars](https://img.shields.io/github/stars/username/repo-name?style=social)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 AGMS adalah platform internal yang digunakan untuk mengelola data siswa,
