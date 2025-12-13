@@ -148,13 +148,6 @@ export default function Dashboard() {
                       >
                         <Eye size={16} />
                       </Link>
-                      <button
-                        onClick={() => remove(r.id)}
-                        className="p-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-600 hover:text-white transition active:scale-95"
-                        title="Hapus"
-                      >
-                        Hapus
-                      </button>
                     </div>
                   </td>
                 </tr>
