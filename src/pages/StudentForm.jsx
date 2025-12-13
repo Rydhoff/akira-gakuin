@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import SearchableSelect from "./SearchableSelect";
-import provinsiKotaData from "../data/provinsi_kota.json";
-
-const kotaOptions = provinsiKotaData.map((k) => ({
-  label: k.kota, // nama kota
-  type: k.tipe, // Kabupaten / Kota
-}));
+import { generateNIS } from "../utils/generateNIS";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+// Note: replaced searchable selects for places with simple text inputs per UX requirement
 
 export default function StudentForm({ onDone, onCancel }) {
-  const [data, setData] = useState({
+  const today = new Date().toISOString().slice(0, 10);
+  const navigate = useNavigate();
+
+  const initialData = {
     angkatan: "",
-    tanggal_masuk: "",
+    // default to today's date but still editable
+    tanggal_masuk: today,
     nis: "",
     // Data Pribadi
     nama: "",
@@ -26,74 +27,77 @@ export default function StudentForm({ onDone, onCancel }) {
     nomor_wa: "",
     email: "",
     asal_daerah: "",
-    alamat_ktp: "",
-    // Fisik & Kepribadian
-    tinggi_badan: "",
-    berat_badan: "",
-    lingkar_pinggang: "",
-    ukuran_kaki: "",
-    dominan_tangan: "Kanan",
-    hobi: [],
-    keahlian: [],
-    kelebihan: [],
-    kekurangan: "",
-    tujuan_ke_jepang: [],
-    tujuan_pulang: [],
-    // Pendidikan
-    pendidikan: {
-      sd: { nama: "", tahun_masuk: "", tahun_lulus: "" },
-      smp: { nama: "", tahun_masuk: "", tahun_lulus: "" },
-      sma: { nama: "", jurusan: "", tahun_masuk: "", tahun_lulus: "" },
-      universitas: { nama: "", jurusan: "", tahun_masuk: "", tahun_keluar: "" },
-    },
-    // Pekerjaan
-    pekerjaan: Array(1).fill({
-      nama_perusahaan: "",
-      jenis_pekerjaan: "",
-      tahun_masuk: "",
-      bulan_masuk: "",
-      tahun_keluar: "",
-      bulan_keluar: "",
-    }),
-    gaji_terakhir: "",
-    pernah_tes_so: 0,
-    // Keluarga
-    keluarga: {
-      ayah: { nama: "", usia: "", pekerjaan: "", nomor_hp: "" },
-      ibu: { nama: "", usia: "", pekerjaan: "", nomor_hp: "" },
-      saudara: Array(0).fill({ jenis: "Adik Laki-laki", nama: "", usia: "", pekerjaan: "" }),
-    },
-    // Health & Dokumen
-    health: {
-      merokok: false,
-      alkohol: false,
-      paspor: false,
-      sehat: true,
-      penyakit_bawaan: "",
-      pernah_operasi: "",
-      alergi: "",
-    },
-    // Program & Pasangan
-    program: "Magang",
-    pasangan: { nama: "", nomor_hp: "" },
-    rencana_pembayaran: "Biaya Mandiri",
-    dokumen_surat: [],
-    // Alamat KTP (flat fields used in UI)
+    // KTP address fields — match the rest of the form
     alamat_ktp_jalan: "",
     alamat_ktp_rt: "",
     alamat_ktp_rw: "",
     alamat_ktp_kelurahan: "",
     alamat_ktp_kecamatan: "",
     alamat_ktp_kota: "",
-    // Status record
-    status: "Aktif",
-  });
+    // Fisik & Kepribadian
+    tinggi_badan: "",
+    berat_badan: "",
+    lingkar_pinggang: "",
+    ukuran_kaki: "",
+    dominan_tangan: "Kanan",
+    // Pendidikan
+    sd_tahun_masuk: "",
+    sd_tahun_lulus: "",
+    smp_tahun_masuk: "",
+    smp_tahun_lulus: "",
+    sma_tahun_masuk: "",
+    sma_tahun_lulus: "",
+    univ_tahun_masuk: "",
+    univ_tahun_lulus: "",
+    pengalaman_kerja: [],
+    // arrays and nested objects used throughout the form
+    hobi: [],
+    keahlian: [],
+    kelebihan: [],
+    tujuan_ke_jepang: [],
+    tujuan_pulang: [],
+    kekurangan: "",
+    // pendidikan structure
+    pendidikan: {
+      sd: { nama: "", tahun_masuk: "", tahun_lulus: "" },
+      smp: { nama: "", tahun_masuk: "", tahun_lulus: "" },
+      sma: { nama: "", tahun_masuk: "", tahun_lulus: "", jurusan: "" },
+      universitas: { nama: "", tahun_masuk: "", tahun_lulus: "", jurusan: "" }
+    },
 
-  const [tempHobi, setTempHobi] = useState(data.hobi.join(", "));
-  const [tempKeahlian, setTempKeahlian] = useState(data.keahlian.join(", "));
-  const [tempKelebihan, setTempKelebihan] = useState(data.kelebihan.join(", "));
-  const [tempTujuanKeJepang, setTempTujuanKeJepang] = useState(data.tujuan_ke_jepang.join(", "));
-  const [tempTujuanPulang, setTempTujuanPulang] = useState(data.tujuan_pulang.join(", "));
+    // pekerjaan (default 1 empty entry)
+    pekerjaan: [
+      { nama_perusahaan: "", jenis_pekerjaan: "", tahun_masuk: "", bulan_masuk: "", tahun_keluar: "", bulan_keluar: "" }
+    ],
+
+    gaji_terakhir: "",
+    pernah_tes_so: "",
+
+    // Keluarga
+    keluarga: {
+      ayah: { nama: "", usia: "", pekerjaan: "", nomor_hp: "" },
+      ibu: { nama: "", usia: "", pekerjaan: "", nomor_hp: "" },
+      saudara: []
+    },
+    // health & dokumen
+    health: { merokok: false, alkohol: false, paspor: false, sehat: true, penyakit_bawaan: "", pernah_operasi: "", alergi: "" },
+    dokumen_surat: "",
+
+    // pasangan & program
+    program: "Magang",
+    rencana_pembayaran: "Biaya Mandiri",
+    pasangan: { nama: "", nomor_hp: "" },
+    status: "Aktif",
+  };
+
+  const [data, setData] = useState(initialData);
+
+  const [tempHobi, setTempHobi] = useState((initialData.hobi || []).join(", "));
+  const [tempKeahlian, setTempKeahlian] = useState((initialData.keahlian || []).join(", "));
+  const [tempKelebihan, setTempKelebihan] = useState((initialData.kelebihan || []).join(", "));
+  const [tempTujuanKeJepang, setTempTujuanKeJepang] = useState((initialData.tujuan_ke_jepang || []).join(", "));
+  const [tempTujuanPulang, setTempTujuanPulang] = useState((initialData.tujuan_pulang || []).join(", "));
+  const [nisAuto, setNisAuto] = useState(true);
 
   const setField = (key, value) => setData((prev) => ({ ...prev, [key]: value }));
   const handleArrayField = (field, value) =>
@@ -113,7 +117,6 @@ export default function StudentForm({ onDone, onCancel }) {
     parentObj[arrayKey] = arr;
     setData((prev) => ({ ...prev, [parentObjKey]: parentObj }));
   };
-  const handleFile = (e) => setData((prev) => ({ ...prev, dokumen_surat: Array.from(e.target.files) }));
 
   // Hitung usia otomatis
   useEffect(() => {
@@ -124,10 +127,96 @@ export default function StudentForm({ onDone, onCancel }) {
     }
   }, [data.tanggal_lahir]);
 
-  const save = (e) => {
+  // keep text area temp fields in sync if `data` gets populated (e.g., edit form)
+  useEffect(() => {
+    setTempHobi((data.hobi || []).join(", "));
+    setTempKeahlian((data.keahlian || []).join(", "));
+    setTempKelebihan((data.kelebihan || []).join(", "));
+    setTempTujuanKeJepang((data.tujuan_ke_jepang || []).join(", "));
+    setTempTujuanPulang((data.tujuan_pulang || []).join(", "));
+  }, [data.hobi, data.keahlian, data.kelebihan, data.tujuan_ke_jepang, data.tujuan_pulang]);
+
+  // auto-preview NIS when angkatan / tanggal_masuk changed, unless user manually edited NIS
+  useEffect(() => {
+    if (!nisAuto) return;
+    if (!data.angkatan || !data.tanggal_masuk) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const tahun = new Date(data.tanggal_masuk).getFullYear();
+        const candidate = await generateNIS(data.angkatan, tahun);
+        if (mounted) setField("nis", candidate);
+      } catch (err) {
+        console.warn("generateNIS preview failed", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [data.angkatan, data.tanggal_masuk, nisAuto]);
+
+  const save = (e) => { 
     e.preventDefault();
     (async () => {
       try {
+        // validate months and non-negative numeric inputs before saving
+        setError("");
+        const parseNum = (v) => {
+          if (v === null || v === undefined || v === "") return null;
+          const n = Number(String(v).replace(/[^\d.-]+/g, ""));
+          return Number.isNaN(n) ? null : n;
+        };
+
+        const errors = [];
+
+        // pekerjaan month validations: must be 1..12 if provided
+        (data.pekerjaan || []).forEach((job, idx) => {
+          ["bulan_masuk", "bulan_keluar"].forEach((k) => {
+            const v = job[k];
+            if (v !== undefined && v !== null && String(v).trim() !== "") {
+              const n = Number(String(v));
+              if (!Number.isInteger(n) || n < 1 || n > 12) {
+                errors.push(`Bulan ${k.replace("_", " ")} pada pekerjaan ${idx + 1} harus antara 01 dan 12`);
+              }
+            }
+          });
+        });
+
+        // helper to check non-negative numeric-ish values
+        const checkNonNegative = (val, label) => {
+          const n = parseNum(val);
+          if (n !== null && n < 0) errors.push(`${label} tidak boleh negatif`);
+        };
+
+        // top-level numeric checks
+        ["angkatan", "tinggi_badan", "berat_badan", "lingkar_pinggang", "ukuran_kaki", "pernah_tes_so"].forEach((k) => checkNonNegative(data[k], k.replace(/_/g, " ")));
+
+        // pendidikan years
+        ["sd", "smp", "sma", "universitas"].forEach((level) => {
+          const p = data.pendidikan?.[level];
+          if (p) {
+            ["tahun_masuk", "tahun_lulus"].forEach((yr) => checkNonNegative(p[yr], `${level.toUpperCase()} ${yr}`));
+          }
+        });
+
+        // pekerjaan years
+        (data.pekerjaan || []).forEach((job, idx) => {
+          ["tahun_masuk", "tahun_keluar"].forEach((yr) => checkNonNegative(job[yr], `Pekerjaan ${idx + 1} ${yr}`));
+        });
+
+        // keluarga ages
+        ["ayah", "ibu"].forEach((parent) => checkNonNegative(data.keluarga?.[parent]?.usia, `${parent} usia`));
+        (data.keluarga?.saudara || []).forEach((s, idx) => checkNonNegative(s.usia, `Saudara ${idx + 1} usia`));
+
+        if (errors.length) {
+          setError(errors.join("; "));
+          return;
+        }
+
+        // Nomor KTP harus 16 digit (tepat)
+        if (!/^\d{16}$/.test(String(data.nomor_ktp || "").trim())) {
+          setError("Nomor KTP harus terdiri dari tepat 16 digit");
+          return;
+        }
+
         setSaving(true);
 
         // prepare arrays from temp fields (don't rely on setState flush)
@@ -137,87 +226,229 @@ export default function StudentForm({ onDone, onCancel }) {
         const tujuan_ke_jepang = tempTujuanKeJepang ? tempTujuanKeJepang.split(/\s*,\s*|\n/) : [];
         const tujuan_pulang = tempTujuanPulang ? tempTujuanPulang.split(/\s*,\s*|\n/) : [];
 
+        const toNumber = (v) => {
+          if (v === null || v === undefined || v === "") return null;
+          const n = Number(String(v).replace(/[^\d.-]+/g, ""));
+          return Number.isNaN(n) ? null : n;
+        };
+
+        const joinArr = (arr) => (Array.isArray(arr) ? arr.join(", ") : arr || null);
+
+        const boolToYesNo = (v) => (v === true || v === "true" || v === "Ya" ? "Ya" : "Tidak");
+
         const payload = {
-          angkatan: data.angkatan || null,
+          angkatan: toNumber(data.angkatan),
           tanggal_masuk: data.tanggal_masuk || null,
           nis: data.nis || null,
 
-          // personal
-          nama: data.nama || null,
-          nomor_ktp: data.nomor_ktp || null,
-          jenis_kelamin: data.jenis_kelamin || null,
+          // personal (DB column names)
+          nama_lengkap: data.nama || null,
+          nomor_ktp: toNumber(data.nomor_ktp),
+          jenis_kelamin: data.jenis_kelamin || "Laki-laki",
           tempat_lahir: data.tempat_lahir || null,
           tanggal_lahir: data.tanggal_lahir || null,
-          usia: data.usia || null,
-          agama: data.agama || null,
+          usia: toNumber(data.usia),
+          agama: data.agama || "Islam",
           golongan_darah: data.golongan_darah || null,
-          status_pernikahan: data.status_pernikahan || null,
+          status_pernikahan: data.status_pernikahan || "Belum Menikah",
           nomor_wa: data.nomor_wa || null,
           email: data.email || null,
           asal_daerah: data.asal_daerah || null,
-          // Kirim hanya objek gabungan alamat_ktp (tidak mengirim field-flat)
-          alamat_ktp: {
-            jalan: data.alamat_ktp_jalan || null,
-            rt: data.alamat_ktp_rt || null,
-            rw: data.alamat_ktp_rw || null,
-            kelurahan: data.alamat_ktp_kelurahan || null,
-            kecamatan: data.alamat_ktp_kecamatan || null,
-            kota: data.alamat_ktp_kota || null,
-          },
+          alamat_jalan: data.alamat_ktp_jalan || null,
+          alamat_rt: data.alamat_ktp_rt || null,
+          alamat_rw: data.alamat_ktp_rw || null,
+          alamat_kelurahan: data.alamat_ktp_kelurahan || null,
+          alamat_kecamatan: data.alamat_ktp_kecamatan || null,
+          alamat_kabupaten: data.alamat_ktp_kota || null,
 
           // physical / personality
-          tinggi_badan: data.tinggi_badan || null,
-          berat_badan: data.berat_badan || null,
-          lingkar_pinggang: data.lingkar_pinggang || null,
-          ukuran_kaki: data.ukuran_kaki || null,
-          dominan_tangan: data.dominan_tangan || null,
-          hobi,
-          keahlian,
-          // Gabungkan motivasi ke satu kolom JSON
-          motivasi: {
-            kelebihan,
-            kekurangan: data.kekurangan || null,
-            tujuan_ke_jepang,
-            tujuan_pulang,
-          },
+          tinggi_badan: toNumber(data.tinggi_badan),
+          berat_badan: toNumber(data.berat_badan),
+          lingkar_pinggang: toNumber(data.lingkar_pinggang),
+          ukuran_kaki: toNumber(data.ukuran_kaki),
+          dominan_tangan: data.dominan_tangan || "Kanan",
+          hobi: joinArr(hobi),
+          keahlian: joinArr(keahlian),
+          tiga_kelebihan: joinArr(kelebihan),
+          satu_kekurangan: data.kekurangan || null,
+          tiga_tujuan_jepang: joinArr(tujuan_ke_jepang),
+          tujuan_pulang: joinArr(tujuan_pulang),
 
-          // pendidikan / pekerjaan / keluarga as JSON
-          pendidikan: data.pendidikan || {},
-          pekerjaan: data.pekerjaan || [],
-          gaji_terakhir: data.gaji_terakhir || null,
-          pernah_tes_so: data.pernah_tes_so || null,
-          keluarga: data.keluarga || {},
+          // pendidikan
+          sd_nama: data.pendidikan?.sd?.nama || null,
+          sd_tahun_masuk: toNumber(data.pendidikan?.sd?.tahun_masuk),
+          sd_tahun_lulus: toNumber(data.pendidikan?.sd?.tahun_lulus),
 
-          // health & program
-          health: data.health || {},
-          // program_info menyimpan detail program sebagai JSON
-          program_info: {
-            jenis_program: data.program || null,
-            rencana_pembayaran: data.rencana_pembayaran || null,
-          },
-          pasangan: data.pasangan || {},
-          status: "Aktif",
-          dokumen_surat: [],
+          smp_nama: data.pendidikan?.smp?.nama || null,
+          smp_tahun_masuk: toNumber(data.pendidikan?.smp?.tahun_masuk),
+          smp_tahun_lulus: toNumber(data.pendidikan?.smp?.tahun_lulus),
+
+          sma_nama: data.pendidikan?.sma?.nama || null,
+          sma_tahun_masuk: toNumber(data.pendidikan?.sma?.tahun_masuk),
+          sma_tahun_lulus: toNumber(data.pendidikan?.sma?.tahun_lulus),
+          sma_jurusan: data.pendidikan?.sma?.jurusan || null,
+
+          univ_nama: data.pendidikan?.universitas?.nama || null,
+          univ_tahun_masuk: toNumber(data.pendidikan?.universitas?.tahun_masuk) || null,
+          // Fix: read tahun_lulus (not tahun_keluar) and default to 0
+          univ_tahun_lulus: toNumber(data.pendidikan?.universitas?.tahun_lulus) || null,
+          univ_jurusan: data.pendidikan?.universitas?.jurusan || null,
+
+          // pekerjaan (up to 4)
+          pekerjaan1_nama_perusahaan: data.pekerjaan[0]?.nama_perusahaan || null,
+          pekerjaan1_jenis: data.pekerjaan[0]?.jenis_pekerjaan || null,
+          pekerjaan1_tahun_masuk: data.pekerjaan[0]?.tahun_masuk || null,
+          pekerjaan1_bulan_masuk: data.pekerjaan[0]?.bulan_masuk || null,
+          pekerjaan1_tahun_keluar: data.pekerjaan[0]?.tahun_keluar || null,
+          pekerjaan1_bulan_keluar: data.pekerjaan[0]?.bulan_keluar || null,
+
+          pekerjaan2_nama_perusahaan: data.pekerjaan[1]?.nama_perusahaan || null,
+          pekerjaan2_jenis: data.pekerjaan[1]?.jenis_pekerjaan || null,
+          pekerjaan2_tahun_masuk: data.pekerjaan[1]?.tahun_masuk || null,
+          pekerjaan2_bulan_masuk: data.pekerjaan[1]?.bulan_masuk || null,
+          pekerjaan2_tahun_keluar: data.pekerjaan[1]?.tahun_keluar || null,
+          pekerjaan2_bulan_keluar: data.pekerjaan[1]?.bulan_keluar || null,
+
+          pekerjaan3_nama_perusahaan: data.pekerjaan[2]?.nama_perusahaan || null,
+          pekerjaan3_jenis: data.pekerjaan[2]?.jenis_pekerjaan || null,
+          pekerjaan3_tahun_masuk: data.pekerjaan[2]?.tahun_masuk || null,
+          pekerjaan3_bulan_masuk: data.pekerjaan[2]?.bulan_masuk || null,
+          pekerjaan3_tahun_keluar: data.pekerjaan[2]?.tahun_keluar || null,
+          pekerjaan3_bulan_keluar: data.pekerjaan[2]?.bulan_keluar || null,
+
+          pekerjaan4_nama_perusahaan: data.pekerjaan[3]?.nama_perusahaan || null,
+          pekerjaan4_jenis: data.pekerjaan[3]?.jenis_pekerjaan || null,
+          pekerjaan4_tahun_masuk: data.pekerjaan[3]?.tahun_masuk || null,
+          pekerjaan4_bulan_masuk: data.pekerjaan[3]?.bulan_masuk || null,
+          pekerjaan4_tahun_keluar: data.pekerjaan[3]?.tahun_keluar || null,
+          pekerjaan4_bulan_keluar: data.pekerjaan[3]?.bulan_keluar || null,
+          
+          pekerjaan5_nama_perusahaan: data.pekerjaan[4]?.nama_perusahaan || null,
+          pekerjaan5_jenis: data.pekerjaan[4]?.jenis_pekerjaan || null,
+          pekerjaan5_tahun_masuk: data.pekerjaan[4]?.tahun_masuk || null,
+          pekerjaan5_bulan_masuk: data.pekerjaan[4]?.bulan_masuk || null,
+          pekerjaan5_tahun_keluar: data.pekerjaan[4]?.tahun_keluar || null,
+          pekerjaan5_bulan_keluar: data.pekerjaan[4]?.bulan_keluar || null,
+
+          gaji_terakhir: toNumber(data.gaji_terakhir),
+          pernah_tes_so: toNumber(data.pernah_tes_so) || 0,
+
+          // keluarga
+          ayah_nama: data.keluarga?.ayah?.nama || null,
+          ayah_usia: data.keluarga?.ayah?.usia || null,
+          ayah_pekerjaan: data.keluarga?.ayah?.pekerjaan || null,
+          ayah_hp: data.keluarga?.ayah?.nomor_hp || null,
+
+          ibu_nama: data.keluarga?.ibu?.nama || null,
+          ibu_usia: data.keluarga?.ibu?.usia || null,
+          ibu_pekerjaan: data.keluarga?.ibu?.pekerjaan || null,
+          ibu_hp: data.keluarga?.ibu?.nomor_hp || null,
+
+          saudara1_jenis: data.keluarga?.saudara?.[0] ? (data.keluarga.saudara[0].jenis || "Adik Laki-laki") : null,
+          saudara1_nama: data.keluarga?.saudara?.[0]?.nama || null,
+          saudara1_usia: data.keluarga?.saudara?.[0]?.usia || null,
+          saudara1_pekerjaan: data.keluarga?.saudara?.[0]?.pekerjaan || null,
+
+          saudara2_jenis: data.keluarga?.saudara?.[1] ? (data.keluarga.saudara[1].jenis || "Adik Laki-laki") : null,
+          saudara2_nama: data.keluarga?.saudara?.[1]?.nama || null,
+          saudara2_usia: data.keluarga?.saudara?.[1]?.usia || null,
+          saudara2_pekerjaan: data.keluarga?.saudara?.[1]?.pekerjaan || null,
+
+          saudara3_jenis: data.keluarga?.saudara?.[2] ? (data.keluarga.saudara[2].jenis || "Adik Laki-laki") : null,
+          saudara3_nama: data.keluarga?.saudara?.[2]?.nama || null,
+          saudara3_usia: data.keluarga?.saudara?.[2]?.usia || null,
+          saudara3_pekerjaan: data.keluarga?.saudara?.[2]?.pekerjaan || null,
+
+          saudara4_jenis: data.keluarga?.saudara?.[3] ? (data.keluarga.saudara[3].jenis || "Adik Laki-laki") : null,
+          saudara4_nama: data.keluarga?.saudara?.[3]?.nama || null,
+          saudara4_usia: data.keluarga?.saudara?.[3]?.usia || null,
+          saudara4_pekerjaan: data.keluarga?.saudara?.[3]?.pekerjaan || null,
+
+          saudara5_jenis: data.keluarga?.saudara?.[4] ? (data.keluarga.saudara[4].jenis || "Adik Laki-laki") : null,
+          saudara5_nama: data.keluarga?.saudara?.[4]?.nama || null,
+          saudara5_usia: data.keluarga?.saudara?.[4]?.usia || null,
+          saudara5_pekerjaan: data.keluarga?.saudara?.[4]?.pekerjaan || null,
+
+          // health & dokumen
+          merokok: boolToYesNo(data.health?.merokok),
+          minum_alkohol: boolToYesNo(data.health?.alkohol),
+          memiliki_paspor: boolToYesNo(data.health?.paspor),
+          sehat: boolToYesNo(data.health?.sehat),
+          penyakit_bawaan: data.health?.penyakit_bawaan || null,
+          pernah_operasi: data.health?.pernah_operasi || null,
+          alergi: data.health?.alergi || null,
+
+          // program & pasangan (flat)
+          program: data.program || "Magang",
+          rencana_pembayaran: data.rencana_pembayaran || "Biaya Mandiri",
+          pasangan_nama: data.pasangan?.nama || null,
+          pasangan_hp: data.pasangan?.nomor_hp || null,
+
+          status: data.status || "Aktif",
+          dokumen_surat: null,
         };
 
-        // insert row
-        const { data: inserted, error: insertError } = await supabase
-          .from("students")
-          .insert(payload)
-          .select()
-          .single();
+        // Insert behavior:
+        // - if user manually set NIS (nisAuto === false and data.nis present), honor it and try a single insert
+        // - otherwise generate NIS and retry on conflicts (to avoid races)
+        let inserted = null;
+        let lastError = null;
 
-        if (insertError) throw insertError;
+        if (!nisAuto && data.nis) {
+          // user-provided NIS - attempt single insert
+          payload.nis = data.nis;
+          const { data: ins, error: insertError } = await supabase
+            .from("students")
+            .insert(payload)
+            .select()
+            .single();
+
+          if (insertError) {
+            const msg = (insertError && (insertError.message || insertError.details || "")).toString().toLowerCase();
+            if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("23505") || (insertError && insertError.code === "23505")) {
+              throw new Error("NIS yang Anda masukkan sudah dipakai, silakan gunakan NIS lain atau biarkan sistem menghasilkan NIS otomatis.");
+            }
+            throw insertError;
+          }
+
+          inserted = ins;
+        } else {
+          const maxAttempts = 10;
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+              const angk = payload.angkatan || data.angkatan || 0;
+              const tahun = data.tanggal_masuk ? new Date(data.tanggal_masuk).getFullYear() : undefined;
+              const nisCandidate = await generateNIS(angk, tahun);
+              payload.nis = nisCandidate;
+
+              const { data: ins, error: insertError } = await supabase
+                .from("students")
+                .insert(payload)
+                .select()
+                .single();
+
+              if (insertError) throw insertError;
+
+              inserted = ins;
+              break;
+            } catch (err) {
+              lastError = err;
+              const msg = (err && (err.message || err.details || err.error_description || "")).toString().toLowerCase();
+              if (msg.includes("duplicate") || msg.includes("unique") || msg.includes("23505") || (err && err.code === "23505")) {
+                // conflict on NIS — retry (next generateNIS will pick up updated max)
+                continue;
+              }
+              // other errors: abort
+              throw err;
+            }
+          }
+
+          if (!inserted) {
+            throw lastError || new Error("Gagal menyimpan data siswa karena konflik pada NIS, silakan coba lagi.");
+          }
+        }
 
         const studentId = inserted.id;
-
-        // upload files if any
-        if (data.dokumen_surat && data.dokumen_surat.length > 0) {
-          const urls = await uploadFiles(data.dokumen_surat, studentId);
-
-          const { error: updateError } = await supabase.from("students").update({ dokumen_surat: urls }).eq("id", studentId);
-          if (updateError) console.error("Failed update dokumen_surat", updateError);
-        }
 
         // activity log
         try {
@@ -243,69 +474,31 @@ export default function StudentForm({ onDone, onCancel }) {
     })();
   };
 
-  // helper: upload files to Supabase storage and return public urls
-  const uploadFiles = async (files, studentId) => {
-    if (!files || files.length === 0) return [];
-    const urls = [];
 
-    for (const f of files) {
-      const path = `${studentId}/${Date.now()}_${f.name}`;
-      const { data: up, error: upErr } = await supabase.storage.from("student-docs").upload(path, f);
-      if (upErr) throw upErr;
-
-      const { data: pub } = supabase.storage.from("student-docs").getPublicUrl(up.path);
-      urls.push(pub.publicUrl);
-    }
-
-    return urls;
-  };
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   return (
+    
     <form
       onSubmit={save}
-      className="space-y-6 p-10 rounded-xl shadow-md bg-white max-h-[90vh] overflow-auto"
+      className="space-y-6 card shadow-sm rounded-2xl p-6 bg-white"
     >
+
+    <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-2 px-4 py-2 rounded-xl 
+                bg-gray-200 hover:bg-gray-300 
+                absolute top-16 right-16
+                text-gray-700 font-medium shadow-sm 
+                transition active:scale-95"
+    >
+      <ArrowLeft size={18} />
+      Kembali
+    </button>
     
-    <div className="relative">
-        <div onClick={onCancel} className="cursor-pointer absolute -top-6 -right-4 text-gray-500 hover:text-gray-700 text-4xl">×</div>
-    </div> 
-    
-    <h2 className="text-2xl font-bold text-left -mt-5 mb-6">Form Pendaftaran & Verifikasi Data Siswa</h2>
-
-      {/* Angkatan, Tanggal Masuk, NIS */}
-      <section className="grid grid-cols-3 gap-4">
-        <div className="flex flex-col">
-          <label className="mb-1.5 text-sm font-medium">Angkatan</label>
-          <input
-            type="number"
-            value={data.angkatan}
-            onChange={(e) => setField("angkatan", e.target.value)}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="mb-1.5 text-sm font-medium">Tanggal Masuk</label>
-          <input
-            type="date"
-            value={data.tanggal_masuk}
-            onChange={(e) => setField("tanggal_masuk", e.target.value)}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="mb-1.5 text-sm font-medium">NIS</label>
-          <input
-            value={data.nis}
-            onChange={(e) => setField("nis", e.target.value)}
-            className="p-2 border rounded bg-slate-100"
-          />
-        </div>
-      </section>
+    <h2 className="text-2xl font-bold text-left mb-6">Form Pendaftaran & Verifikasi Data Siswa</h2>
 
       {/* Data Pribadi */}
       <section className="space-y-6">
@@ -319,17 +512,26 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.nama}
               onChange={(e) => setField("nama", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: Muhammad Ridho Darmawan"
               required
             />
           </div>
 
           {/* Nomor KTP */}
           <div className="flex flex-col">
-            <label className="mb-1.5 text-sm font-medium">Nomor KTP</label>
+            <label className="mb-1.5 text-sm font-medium">Nomor KTP (16 digit)</label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="\d{16}"
+              maxLength={16}
+              placeholder="Ex: 3215013204304832"
               value={data.nomor_ktp}
-              onChange={(e) => setField("nomor_ktp", e.target.value)}
+              onChange={(e) => {
+                // keep only digits in the KTP input
+                const onlyDigits = e.target.value.replace(/\D/g, "");
+                setField("nomor_ktp", onlyDigits);
+              }}
               className="p-2 border rounded"
               required
             />
@@ -352,11 +554,13 @@ export default function StudentForm({ onDone, onCancel }) {
           {/* Tempat Lahir */}
           <div className="flex flex-col">
             <label className="mb-1.5 text-sm font-medium">Tempat Lahir</label>
-            <SearchableSelect
-              options={kotaOptions}
+            <input
+              type="text"
+              placeholder="Ex: Karawang"
               value={data.tempat_lahir}
-              onChange={(val) => setField("tempat_lahir", val)}
-              placeholder="Pilih Kota / Kabupaten"
+              onChange={(e) => setField("tempat_lahir", e.target.value)}
+              className="p-2 border rounded"
+              required
             />
           </div>
 
@@ -378,7 +582,7 @@ export default function StudentForm({ onDone, onCancel }) {
             <input
               type="number"
               value={data.usia}
-              readOnly
+              disabled
               className="p-2 border rounded bg-slate-100"
             />
           </div>
@@ -438,6 +642,8 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.nomor_wa}
               onChange={(e) => setField("nomor_wa", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: 089134643347"
+              required 
             />
           </div>
 
@@ -449,66 +655,75 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.email}
               onChange={(e) => setField("email", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: ridho@gmail.com"
+              required
             />
           </div>
 
           {/* Asal Daerah */}
           <div className="flex flex-col">
-            <label className="mb-1.5 text-sm font-medium">Asal Daerah Saat Ini</label>
-            <SearchableSelect
-              options={kotaOptions}
+            <label className="mb-1.5 text-sm font-medium">Asal Daerah</label>
+            <input
+              type="text"
+              placeholder="Ex: Karawang"
               value={data.asal_daerah}
-              onChange={(val) => setField("asal_daerah", val)}
-              placeholder="Pilih Kota / Kabupaten"
+              onChange={(e) => setField("asal_daerah", e.target.value)}
+              className="p-2 border rounded"
             />
           </div>
         </div>
 
         {/* Alamat KTP */}
         <div className="flex flex-col">
-          <label className="mb-1.5 text-sm font-medium">Alamat KTP</label>
+          <label className="mb-1.5 text-sm font-medium">Alamat sesuai KTP</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <input
               type="text"
-              placeholder="Alamat Jalan"
+              placeholder="Jalan | Ex: Jl. Merdeka No. 10"
               value={data.alamat_ktp_jalan || ""}
               onChange={(e) => setField("alamat_ktp_jalan", e.target.value)}
               className="p-2 border rounded"
+              required
             />
             <input
               type="text"
-              placeholder="RT"
+              placeholder="RT | Ex: 004"
               value={data.alamat_ktp_rt || ""}
               onChange={(e) => setField("alamat_ktp_rt", e.target.value)}
               className="p-2 border rounded"
+              required
             />
             <input
               type="text"
-              placeholder="RW"
+              placeholder="RW | Ex: 005"
               value={data.alamat_ktp_rw || ""}
               onChange={(e) => setField("alamat_ktp_rw", e.target.value)}
               className="p-2 border rounded"
+              required
             />
             <input
               type="text"
-              placeholder="Kelurahan / Desa"
+              placeholder="Kelurahan / Desa | Ex: Sukamaju"
               value={data.alamat_ktp_kelurahan || ""}
               onChange={(e) => setField("alamat_ktp_kelurahan", e.target.value)}
               className="p-2 border rounded"
+              required
             />
             <input
               type="text"
-              placeholder="Kecamatan"
+              placeholder="Kecamatan | Ex: Telukjambe"
               value={data.alamat_ktp_kecamatan || ""}
               onChange={(e) => setField("alamat_ktp_kecamatan", e.target.value)}
               className="p-2 border rounded"
+              required
             />
             <input
               type="text"
-              placeholder="Kota / Kabupaten"
+              placeholder="Kota / Kabupaten | Ex: Karawang"
               value={data.alamat_ktp_kota || ""}
               onChange={(e) => setField("alamat_ktp_kota", e.target.value)}
               className="p-2 border rounded"
+              required
             />
           </div>
         </div>
@@ -523,9 +738,12 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Tinggi Badan (cm)</label>
             <input
               type="number"
+              min={0}
               value={data.tinggi_badan}
               onChange={(e) => setField("tinggi_badan", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: 172"
+              required
             />
           </div>
 
@@ -534,9 +752,12 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Berat Badan (kg)</label>
             <input
               type="number"
+              min={0}
               value={data.berat_badan}
               onChange={(e) => setField("berat_badan", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: 66"
+              required
             />
           </div>
 
@@ -545,20 +766,26 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Lingkar Pinggang (cm)</label>
             <input
               type="number"
+              min={0}
               value={data.lingkar_pinggang}
               onChange={(e) => setField("lingkar_pinggang", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: 76"
+              required
             />
           </div>
 
-          {/* Ukuran Kaki */}
+          {/* Ukuran Panjang Kaki */}
           <div className="flex flex-col">
-            <label className="mb-1.5 text-sm font-medium">Ukuran Kaki</label>
+            <label className="mb-1.5 text-sm font-medium">Ukuran Panjang Kaki (cm)</label>
             <input
-              type="text"
+              type="number"
+              min={0}
               value={data.ukuran_kaki}
               onChange={(e) => setField("ukuran_kaki", e.target.value)}
               className="p-2 border rounded"
+              placeholder="Ex: 26"
+              required
             />
           </div>
 
@@ -569,6 +796,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.dominan_tangan}
               onChange={(e) => setField("dominan_tangan", e.target.value)}
               className="p-2 border rounded"
+              required
             >
               <option value="Kanan">Kanan</option>
               <option value="Kiri">Kiri</option>
@@ -582,10 +810,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Hobi (pisah koma)</label>
             <textarea
               rows={1}
-              placeholder="Contoh: Membaca, Olahraga, Musik"
+              placeholder="Ex: Membaca, Olahraga, Musik"
               value={tempHobi}
               onChange={(e) => setTempHobi(e.target.value)}
               className="p-2 border rounded resize-none"
+              required
             />
           </div>
 
@@ -594,10 +823,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Keahlian / Bakat Khusus (pisah koma)</label>
             <textarea
               rows={1}
-              placeholder="Contoh: Memasak, Menyanyi"
+              placeholder="Ex: Memasak, Menyanyi, Desain Grafis"
               value={tempKeahlian}
               onChange={(e) => setTempKeahlian(e.target.value)}
               className="p-2 border rounded resize-none"
+              required
             />
           </div>
 
@@ -606,10 +836,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Tiga Kelebihan (pisah koma)</label>
             <textarea
               rows={1}
-              placeholder="Contoh: Rajin, Disiplin, Kreatif"
+              placeholder="Ex: Rajin, Disiplin, Kreatif"
               value={tempKelebihan}
               onChange={(e) => setTempKelebihan(e.target.value)}
               className="p-2 border rounded resize-none"
+              required
             />
           </div>
 
@@ -618,10 +849,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Satu Kekurangan</label>
             <input
               type="text"
-              placeholder="Contoh: Pemalu"
+              placeholder="Ex: Pemalu"
               value={data.kekurangan}
               onChange={(e) => setField("kekurangan", e.target.value)}
               className="p-2 border rounded"
+              required
             />
           </div>
 
@@ -630,10 +862,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Tiga Tujuan ke Jepang (pisah koma)</label>
             <textarea
               rows={2}
-              placeholder="Contoh: Belajar Bahasa, Wisata, Kerja"
+              placeholder="Ex: Belajar Bahasa, Wisata, Kerja"
               value={tempTujuanKeJepang}
               onChange={(e) => setTempTujuanKeJepang(e.target.value)}
               className="p-2 border rounded resize-none"
+              required
             />
           </div>
 
@@ -642,10 +875,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <label className="mb-1.5 text-sm font-medium">Tujuan Saat Pulang ke Indonesia (pisah koma)</label>
             <textarea
               rows={2}
-              placeholder="Contoh: Bekerja, Mengembangkan Usaha"
+              placeholder="Ex: Bekerja, Mengembangkan Usaha"
               value={tempTujuanPulang}
               onChange={(e) => setTempTujuanPulang(e.target.value)}
               className="p-2 border rounded resize-none"
+              required
             />
           </div>
         </div>
@@ -663,6 +897,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 <input
                   type="text"
                   value={data.pendidikan[level].nama}
+                  placeholder={level == "sd" ? `Ex: SD Negeri 1 Jakarta` : level == "smp" ? `Ex: SMP Negeri 5 Bandung` : level == "sma" ? `Ex: SMA Negeri 3 Surabaya` : `Ex: Universitas Indonesia`}
                   onChange={(e) =>
                     handleNestedField("pendidikan", level, { ...data.pendidikan[level], nama: e.target.value })
                   }
@@ -675,7 +910,9 @@ export default function StudentForm({ onDone, onCancel }) {
                 <label className="mb-1.5 text-sm font-medium">Tahun Masuk</label>
                 <input
                   type="number"
+                  min={0}
                   value={data.pendidikan[level].tahun_masuk}
+                  placeholder={level == "sd" ? `Ex: 2005` : level == "smp" ? `Ex: 2011` : level == "sma" ? `Ex: 2014` : `Ex: 2017`}
                   onChange={(e) =>
                     handleNestedField("pendidikan", level, { ...data.pendidikan[level], tahun_masuk: e.target.value })
                   }
@@ -688,7 +925,9 @@ export default function StudentForm({ onDone, onCancel }) {
                 <label className="mb-1.5 text-sm font-medium">Tahun Lulus</label>
                 <input
                   type="number"
+                  min={0}
                   value={data.pendidikan[level].tahun_lulus}
+                  placeholder={level == "sd" ? `Ex: 2011` : level == "smp" ? `Ex: 2014` : level == "sma" ? `Ex: 2017` : `Ex: 2021`}
                   onChange={(e) =>
                     handleNestedField("pendidikan", level, { ...data.pendidikan[level], tahun_lulus: e.target.value })
                   }
@@ -703,6 +942,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   <input
                     type="text"
                     value={data.pendidikan[level].jurusan}
+                    placeholder={level == "sma" ? `Ex: IPA` : `Ex: Teknik Informatika`}
                     onChange={(e) =>
                       handleNestedField("pendidikan", level, { ...data.pendidikan[level], jurusan: e.target.value })
                     }
@@ -716,7 +956,7 @@ export default function StudentForm({ onDone, onCancel }) {
       </section>
       {/* 5. Riwayat Pekerjaan */}
       <section className="space-y-4">
-        <h3 className="text-xl font-semibold">4. Riwayat Pekerjaan (Maks 4)</h3>
+        <h3 className="text-xl font-semibold">4. Riwayat Pekerjaan (Maks 5)</h3>
 
         {/* Input Jumlah Perusahaan */}
         <div className="flex items-center">
@@ -724,10 +964,10 @@ export default function StudentForm({ onDone, onCancel }) {
           <input
             type="number"
             min={1}
-            max={4}
+            max={5}
             value={data.pekerjaan.length}
             onChange={(e) => {
-              let n = Math.max(1, Math.min(4, parseInt(e.target.value) || 1));
+              let n = Math.max(1, Math.min(5, parseInt(e.target.value) || 1));
               const pekerjaanBaru = Array.from({ length: n }, (_, i) =>
                 data.pekerjaan[i] || {
                   nama_perusahaan: "",
@@ -741,6 +981,7 @@ export default function StudentForm({ onDone, onCancel }) {
               setField("pekerjaan", pekerjaanBaru);
             }}
             className="w-fit border rounded"
+            required
           />
         </div>
 
@@ -756,6 +997,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   value={job.nama_perusahaan}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "nama_perusahaan", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
@@ -766,6 +1008,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   value={job.jenis_pekerjaan}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "jenis_pekerjaan", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
@@ -773,19 +1016,26 @@ export default function StudentForm({ onDone, onCancel }) {
                 <label className="mb-1.5 text-sm font-medium">Tahun Masuk</label>
                 <input
                   type="number"
+                  min={0}
                   value={job.tahun_masuk}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_masuk", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium">Bulan Masuk</label>
                 <input
-                  type="text"
+                  type="number"
+                  min={1}
+                  max={12}
+                  step={1}
+                  placeholder="MM"
                   value={job.bulan_masuk}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_masuk", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
@@ -793,19 +1043,26 @@ export default function StudentForm({ onDone, onCancel }) {
                 <label className="mb-1.5 text-sm font-medium">Tahun Keluar</label>
                 <input
                   type="number"
+                  min={0}
                   value={job.tahun_keluar}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_keluar", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium">Bulan Keluar</label>
                 <input
-                  type="text"
+                  type="number"
+                  min={1}
+                  max={12}
+                  step={1}
+                  placeholder="MM"
                   value={job.bulan_keluar}
                   onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_keluar", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
             </div>
@@ -822,6 +1079,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.gaji_terakhir}
               onChange={(e) => setField("gaji_terakhir", e.target.value)}
               className="p-2 border rounded"
+              required
             />
           </div>
 
@@ -830,9 +1088,11 @@ export default function StudentForm({ onDone, onCancel }) {
             <input
               type="number"
               placeholder="Pernah Tes SO"
+              min={0}
               value={data.pernah_tes_so}
               onChange={(e) => setField("pernah_tes_so", e.target.value)}
               className="p-2 border rounded"
+              required
             />
           </div>
         </div>
@@ -855,6 +1115,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     handleNestedField("keluarga", parent, { ...data.keluarga[parent], nama: e.target.value })
                   }
                   className="p-2 border rounded"
+                  required
                 />
               </div>
               <div className="flex flex-col">
@@ -862,10 +1123,12 @@ export default function StudentForm({ onDone, onCancel }) {
                 <input
                   type="number"
                   value={data.keluarga[parent].usia}
+                  min={0}
                   onChange={(e) =>
                     handleNestedField("keluarga", parent, { ...data.keluarga[parent], usia: e.target.value })
                   }
                   className="p-2 border rounded"
+                  required
                 />
               </div>
               <div className="flex flex-col">
@@ -877,6 +1140,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     handleNestedField("keluarga", parent, { ...data.keluarga[parent], pekerjaan: e.target.value })
                   }
                   className="p-2 border rounded"
+                  required
                 />
               </div>
               <div className="flex flex-col">
@@ -888,6 +1152,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     handleNestedField("keluarga", parent, { ...data.keluarga[parent], nomor_hp: e.target.value })
                   }
                   className="p-2 border rounded"
+                  required
                 />
               </div>
             </div>
@@ -900,16 +1165,17 @@ export default function StudentForm({ onDone, onCancel }) {
           <input
             type="number"
             min={0}
-            max={4}
+            max={5}
             value={data.keluarga.saudara.length}
             onChange={(e) => {
-              let n = Math.max(0, Math.min(4, parseInt(e.target.value) || 0));
+              let n = Math.max(0, Math.min(5, parseInt(e.target.value) || 0));
               const saudaraBaru = Array.from({ length: n }, (_, i) =>
-                data.keluarga.saudara[i] || { jenis: "", nama: "", usia: "", pekerjaan: "" }
+                data.keluarga.saudara[i] || { jenis: "Adik Laki-laki", nama: "", usia: "", pekerjaan: "" }
               );
               setField("keluarga", { ...data.keluarga, saudara: saudaraBaru });
             }}
             className="w-fit border rounded"
+            required
           />
         </div>
 
@@ -921,9 +1187,10 @@ export default function StudentForm({ onDone, onCancel }) {
               <div className="flex flex-col">
                 <label className="mb-1.5 text-sm font-medium">Jenis</label>
                 <select
-                  value={s.jenis}
+                  value={s.jenis || "Adik Laki-laki"}
                   onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "jenis", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 >
                   <option value="Adik Laki-laki">Adik Laki-laki</option>
                   <option value="Adik Perempuan">Adik Perempuan</option>
@@ -939,6 +1206,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   value={s.nama}
                   onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "nama", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
@@ -946,9 +1214,11 @@ export default function StudentForm({ onDone, onCancel }) {
                 <label className="mb-1.5 text-sm font-medium">Usia</label>
                 <input
                   type="number"
+                  min={0}
                   value={s.usia}
                   onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "usia", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
 
@@ -959,6 +1229,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   value={s.pekerjaan}
                   onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "pekerjaan", e.target.value)}
                   className="p-2 border rounded"
+                  required
                 />
               </div>
             </div>
@@ -977,6 +1248,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.health.merokok}
               onChange={(e) => setField("health", { ...data.health, merokok: e.target.value === "true" })}
               className="p-2 border rounded"
+              required
             >
               <option value="true">Ya</option>
               <option value="false">Tidak</option>
@@ -989,6 +1261,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.health.alkohol}
               onChange={(e) => setField("health", { ...data.health, alkohol: e.target.value === "true" })}
               className="p-2 border rounded"
+              required
             >
               <option value="true">Ya</option>
               <option value="false">Tidak</option>
@@ -1001,6 +1274,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.health.paspor}
               onChange={(e) => setField("health", { ...data.health, paspor: e.target.value === "true" })}
               className="p-2 border rounded"
+              required
             >
               <option value="true">Ya</option>
               <option value="false">Tidak</option>
@@ -1013,6 +1287,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.health.sehat}
               onChange={(e) => setField("health", { ...data.health, sehat: e.target.value === "true" })}
               className="p-2 border rounded"
+              required
             >
               <option value="true">Ya</option>
               <option value="false">Tidak</option>
@@ -1050,8 +1325,16 @@ export default function StudentForm({ onDone, onCancel }) {
           </div>
 
           <div className="flex flex-col col-span-1">
-            <label className="mb-1.5 text-sm font-medium">Upload Dokumen</label>
-            <input type="file" multiple onChange={handleFile} className="p-2 border rounded" />
+            <label className="mb-1.5 text-sm font-medium">Link Dokumen</label>
+            <input
+              type="text"
+              rows={4}
+              placeholder="Contoh: https://drive.google.com/..."
+              value={data.dokumen_surat}
+              onChange={(e) => setField("dokumen_surat", e.target.value)}
+              className="p-2 border rounded resize-none"
+              required
+            />
           </div>
         </div>
       </section>
@@ -1067,6 +1350,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.program}
               onChange={(e) => setField("program", e.target.value)}
               className="p-2 border rounded"
+              required
             >
               <option value="Magang">Magang</option>
               <option value="Kerja">Kerja</option>
@@ -1079,6 +1363,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.rencana_pembayaran}
               onChange={(e) => setField("rencana_pembayaran", e.target.value)}
               className="p-2 border rounded"
+              required
             >
               <option value="Biaya Mandiri">Biaya Mandiri</option>
               <option value="Dana Talang">Dana Talang</option>
@@ -1107,6 +1392,44 @@ export default function StudentForm({ onDone, onCancel }) {
         </div>
       </section>
 
+      <hr className="border border-gray-200" />
+
+      {/* Angkatan, Tanggal Masuk, NIS */}
+      <section className="grid grid-cols-3 gap-4 mb-14">
+        <div className="flex flex-col">
+          <label className="mb-1.5 text-sm font-medium">Angkatan</label>
+          <input
+            type="number"
+            min={0}
+            value={data.angkatan}
+            onChange={(e) => setField("angkatan", e.target.value)}
+            className="p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="mb-1.5 text-sm font-medium">Tanggal Masuk</label>
+          <input
+            type="date"
+            value={data.tanggal_masuk}
+            onChange={(e) => setField("tanggal_masuk", e.target.value)}
+            className="p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="mb-1.5 text-sm font-medium">NIS</label>
+          <input
+            value={data.nis}
+            onChange={(e) => { setNisAuto(false); setField("nis", e.target.value); }}
+            className="p-2 border rounded bg-slate-100"
+            required
+          />
+        </div>
+      </section>
+
       {/* Submit */}
         <div className="flex flex-col items-end gap-3 mt-4">
 
@@ -1119,8 +1442,8 @@ export default function StudentForm({ onDone, onCancel }) {
         {/* Batal */}
         <button
             type="button"
-            onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-(--akira-border) text-(--akira-gray) hover:bg-gray-100 hover:text-white transition"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 rounded-xl border border-(--akira-border) text-(--akira-gray) hover:bg-gray-100 transition"
         >
             Batal
         </button>

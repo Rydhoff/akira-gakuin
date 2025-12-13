@@ -10,6 +10,8 @@ import Keberangkatan from "./pages/Keberangkatan";
 
 import { useAuth } from "./contexts/AuthContext";
 import StudentDetail from "./pages/StudentDetail";
+import StudentForm from "./pages/StudentForm";
+import StudentEdit from "./pages/StudentEdit";
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
@@ -38,7 +40,9 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Protected><Dashboard /></Protected>} />
                   <Route path="/students" element={<Protected><Students /></Protected>} />
+                  <Route path="/students/form" element={<Protected><StudentForm /></Protected>} />
                   <Route path="/students/:id" element={<Protected><StudentDetail /></Protected>} />
+                  <Route path="/students/edit/:id" element={<Protected><StudentEdit /></Protected>} />
                   <Route path="/program" element={<Protected><Program /></Protected>} />
                   <Route path="/keberangkatan" element={<Protected><Keberangkatan /></Protected>} />
                 </Routes>

@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.86.2",
     "@tailwindcss/vite": "^4.1.17",
+    "dayjs": "^1.11.19",
     "lucide-react": "^0.556.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

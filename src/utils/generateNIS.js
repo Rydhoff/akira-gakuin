@@ -1,17 +1,15 @@
 import { supabase } from "../lib/supabaseClient";
 
-/**
- * generateNIS — full client-side
- * Format: YYYYMM + ANGKATAN(2digit) + URUT(3digit)
- */
-export async function generateNIS(angkatan = "01") {
+export async function generateNIS(angkatan = "1", tahun = null) {
   const now = new Date();
-  const YYYY = now.getFullYear().toString();
-  const MM = String(now.getMonth() + 1).padStart(2, "0");
+  const YYYY = String(tahun || now.getFullYear());
 
-  const prefix = YYYY + MM + String(angkatan).padStart(2, "0");
+  const angk = String(angkatan || "0").replace(/^0+/, "") || "0";
+  const angkPad = String(angk).padStart(3, "0");
 
-  // Ambil NIS terbesar existing
+  const prefix = YYYY + angkPad;
+
+  // Ambil NIS terbesar existing untuk prefix ini
   const { data, error } = await supabase
     .from("students")
     .select("nis")

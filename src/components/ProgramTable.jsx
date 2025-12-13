@@ -17,7 +17,7 @@ export default function ProgramTable({ rows = [] }) {
         {rows.map((r) => (
           <tr key={r.id} className="odd:bg-slate-50">
             <td className="p-2">{r.nis}</td>
-            <td className="p-2">{r.nama}</td>
+            <td className="p-2">{r.nama_lengkap}</td>
 
             <td className="p-2 whitespace-pre">
               {r.shiken ? JSON.stringify(r.shiken, null, 2) : "-"}

@@ -21,7 +21,7 @@ export default function KeberangkatanTable({ rows = [] }) {
           return (
             <tr className="odd:bg-slate-50" key={r.id}>
               <td className="p-2 text-red-900">{r.nis}</td>
-              <td className="p-2 text-red-900">{r.nama}</td>
+              <td className="p-2 text-red-900">{r.nama_lengkap}</td>
               <td className="p-2 text-red-900">{k.prefektur || "-"}</td>
               <td className="p-2 text-red-900">{k.perusahaan || "-"}</td>
               <td className="p-2 text-red-900">{k.tanggal_berangkat || "-"}</td>

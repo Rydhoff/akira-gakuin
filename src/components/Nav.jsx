@@ -60,7 +60,8 @@ export default function Nav() {
         {/* MENU */}
         <nav className="flex-1 space-y-2">
             {menu.map((m) => {
-            const active = location.pathname === m.to;
+            const path = location.pathname || "";
+            const active = m.to === "/" ? path === "/" : path.startsWith(m.to + (m.to.endsWith("/") ? "" : ""));
             return (
                 <Link
                 key={m.to}
