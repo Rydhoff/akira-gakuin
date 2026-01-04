@@ -6,13 +6,13 @@ import { ArrowLeft } from "lucide-react";
 // ===== BADGE STATUS =====
 const statusBadge = (status) => {
   const color = {
-      "Aktif": "bg-green-100 text-green-700",
-      "Tidak Aktif": "bg-red-100 text-red-700",
-      "Cuti": "bg-purple-100 text-purple-700",
-      "Pengunduran Diri": "bg-red-200 text-red-800",
-      "Diklat SO": "bg-blue-100 text-blue-700",
-      "Diterima SO": "bg-yellow-100 text-yellow-700",
-    }[status] || "bg-gray-100 text-gray-600";
+    "Aktif": "bg-green-100 text-green-700",
+    "Tidak Aktif": "bg-red-100 text-red-700",
+    "Cuti": "bg-purple-100 text-purple-700",
+    "Pengunduran Diri": "bg-red-200 text-red-800",
+    "Diklat SO": "bg-blue-100 text-blue-700",
+    "Diterima SO": "bg-yellow-100 text-yellow-700",
+  }[status] || "bg-gray-100 text-gray-600";
 
   return (
     <span className={`px-2 py-1 text-sm rounded-lg font-medium ${color}`}>
@@ -37,10 +37,10 @@ function Card({ title, data }) {
               {key.replace(/_/g, " ")}:
             </span>{" "}
             {Array.isArray(value)
-            ? value.join(", ")
-            : typeof value === "boolean"
-            ? value ? "Ya" : "Tidak"
-            : value?.toString() || "-"
+              ? value.join(", ")
+              : typeof value === "boolean"
+                ? value ? "Ya" : "Tidak"
+                : value?.toString() || "-"
             }
           </div>
         ))}
@@ -220,6 +220,8 @@ export default function StudentDetail() {
     cuti_mulai,
     cuti_selesai,
     tanggal_pengunduran,
+
+    foto_url
   } = student;
 
 
@@ -277,7 +279,7 @@ export default function StudentDetail() {
       <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google Drive ({nama_lengkap})</a>
     );
   };
-  
+
   const formatTanggal = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
@@ -317,17 +319,36 @@ export default function StudentDetail() {
       </div>
 
       {/* Title */}
-      <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200">
-        <h1 className="text-3xl font-extrabold text-[#0B2E4E] tracking-wide">
-          {nama_lengkap || "-"}
-        </h1>
+      <div className="bg-white rounded-2xl p-6 shadow-md border border-gray-200 flex gap-6">
+        {/* FOTO SISWA */}
+        <div className="w-[150px] h-[200px] rounded-xl overflow-hidden border border-gray-300 bg-gray-100 flex items-center justify-center">
+          {foto_url ? (
+            <img
+              src={foto_url}
+              alt={`Foto ${nama_lengkap}`}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-gray-400 text-sm text-center">
+              Tidak ada foto
+            </span>
+          )}
+        </div>
 
-        <p className="text-gray-600 mt-1 text-lg gap-3">
-          Nomor Induk Siswa: <span className="font-semibold">{nis}</span>
-          <p className="mt-2 flex gap-2">
-            {statusBadge(status)}
-            {status == "Cuti" ? (<span className="text-gray-600 mt-1 text-sm font-semibold flex items-center gap-3 h-full">{cuti_mulai && cuti_selesai
-              ? `${new Date(cuti_mulai).toLocaleDateString('id-ID', {
+        {/* INFO UTAMA */}
+        <div>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-[#0B2E4E] tracking-wide">
+              {nama_lengkap || "-"}
+            </h1>
+          </div>
+
+          <p className="text-gray-600 mt-1 text-lg gap-3">
+            NIS: <span className="font-semibold">{nis}</span>
+            <p className="mt-2 flex gap-2">
+              {statusBadge(status)}
+              {status == "Cuti" ? (<span className="text-gray-600 mt-1 text-sm font-semibold flex items-center gap-3 h-full">{cuti_mulai && cuti_selesai
+                ? `${new Date(cuti_mulai).toLocaleDateString('id-ID', {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric'
@@ -336,17 +357,26 @@ export default function StudentDetail() {
                   month: 'long',
                   year: 'numeric'
                 })}`
-              : '-'}</span>) : ""}
-            {status == "Pengunduran Diri" ? (<span className="text-gray-600 mt-1 text-sm font-semibold flex items-center gap-3 h-full">{tanggal_pengunduran
-              ? new Date(tanggal_pengunduran).toLocaleDateString('id-ID', {
+                : '-'}</span>) : ""}
+              {status == "Pengunduran Diri" ? (<span className="text-gray-600 mt-1 text-sm font-semibold flex items-center gap-3 h-full">{tanggal_pengunduran
+                ? new Date(tanggal_pengunduran).toLocaleDateString('id-ID', {
                   day: '2-digit',
                   month: 'long',
                   year: 'numeric'
                 })
-              : '-'}
-            </span>) : ""}
+                : '-'}
+              </span>) : ""}
+              {status == "Aktif" ? (<span className="text-gray-600 mt-1 text-sm font-semibold flex items-center gap-3 h-full">{tanggal_masuk
+                ? new Date(tanggal_masuk).toLocaleDateString('id-ID', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })
+                : '-'}
+              </span>) : ""}
+            </p>
           </p>
-        </p>
+        </div>
       </div>
 
       {/* Data Pribadi */}
@@ -484,7 +514,7 @@ export default function StudentDetail() {
   );
 }
 
-    
+
 
 // ========== Reusable Components ==========
 

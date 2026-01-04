@@ -1,15 +1,88 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User, X, Upload, Crop, Check, ZoomIn, ZoomOut } from "lucide-react";
+import Cropper from "react-easy-crop";
+
+// Helper function to create image from URL
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+// Helper function to get cropped image as blob (300x400px JPG, <100KB)
+const getCroppedImg = async (imageSrc, pixelCrop) => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const targetWidth = 300;
+  const targetHeight = 400;
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    targetWidth,
+    targetHeight
+  );
+
+  return new Promise((resolve) => {
+    let quality = 0.9;
+    const tryCompress = () => {
+      canvas.toBlob(
+        (blob) => {
+          if (blob.size > 100 * 1024 && quality > 0.1) {
+            quality -= 0.1;
+            tryCompress();
+          } else {
+            resolve(blob);
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+    tryCompress();
+  });
+};
 
 export default function StudentEdit() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Photo upload states
+  const [photoFile, setPhotoFile] = useState(null); // New photo blob to upload
+  const [photoPreview, setPhotoPreview] = useState(null); // Preview URL (new or existing)
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState(null); // Original photo from DB
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Crop modal states
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Crop complete callback
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
 
   const blank = {
     angkatan: "",
@@ -88,6 +161,111 @@ export default function StudentEdit() {
     setForm((prev) => ({ ...prev, keluarga }));
   };
 
+  // Photo upload handler - opens crop modal
+  const handlePhotoChange = (e) => {
+    if (photoPreview && photoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(photoPreview);
+    }
+
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setCroppedAreaPixels(null);
+
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('File harus berupa gambar (JPG, PNG, dll)');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Ukuran file maksimal 10MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToCrop(reader.result);
+        setShowCropModal(true);
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+      };
+      reader.readAsDataURL(file);
+      setError('');
+    }
+    e.target.value = '';
+  };
+
+  // Apply crop and create final processed image
+  const handleCropConfirm = async () => {
+    try {
+      if (!imageToCrop || !croppedAreaPixels) return;
+
+      const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      setPhotoFile(croppedBlob);
+
+      const previewUrl = URL.createObjectURL(croppedBlob);
+      setPhotoPreview(previewUrl);
+
+      setShowCropModal(false);
+      setImageToCrop(null);
+    } catch (err) {
+      console.error('Crop failed:', err);
+      setError('Gagal memproses foto');
+    }
+  };
+
+  // Cancel crop
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setImageToCrop(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+  };
+
+  // Remove photo
+  const removePhoto = () => {
+    if (photoPreview && photoPreview !== existingPhotoUrl) {
+      URL.revokeObjectURL(photoPreview);
+    }
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
+  // Upload photo to Supabase Storage
+  const uploadPhoto = async (studentId) => {
+    if (!photoFile) return null;
+
+    setUploadingPhoto(true);
+    try {
+      const fileName = `${studentId}-${Date.now()}.jpg`;
+      const filePath = `${fileName}`;
+
+      if (existingPhotoUrl) {
+        const oldPath = existingPhotoUrl.split("/").pop().split("?")[0];
+        await supabase.storage.from("students").remove([oldPath]);
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('students')
+        .upload(filePath, photoFile, {
+          upsert: true,
+          contentType: 'image/jpeg'
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("students")
+        .getPublicUrl(filePath);
+
+      return `${urlData.publicUrl}?t=${Date.now()}`;
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+      throw err;
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -105,77 +283,79 @@ export default function StudentEdit() {
         if (!mounted) return;
 
         const s = data;
+        setExistingPhotoUrl(s.foto_url || null);
+        setPhotoPreview(s.foto_url || null);
 
         setForm((p) => ({
           ...p,
-            id: s.id,
-            nis: s.nis || "",
-            angkatan: s.angkatan || "",
-            tanggal_masuk: s.tanggal_masuk || "",
-            nama: s.nama_lengkap || s.nama || "",
-            nomor_ktp: s.nomor_ktp ? String(s.nomor_ktp) : "",
-            jenis_kelamin: s.jenis_kelamin || "Laki-laki",
-            tempat_lahir: s.tempat_lahir || "",
-            tanggal_lahir: s.tanggal_lahir || "",
-            usia: s.usia || "",
-            agama: s.agama || "Islam",
-            golongan_darah: s.golongan_darah || "",
-            status_pernikahan: s.status_pernikahan || "Belum Menikah",
-            nomor_wa: s.nomor_wa || "",
-            email: s.email || "",
-            asal_daerah: s.asal_daerah || "",
-            alamat_ktp_jalan: s.alamat_jalan || "",
-            alamat_ktp_rt: s.alamat_rt || "",
-            alamat_ktp_rw: s.alamat_rw || "",
-            alamat_ktp_kelurahan: s.alamat_kelurahan || "",
-            alamat_ktp_kecamatan: s.alamat_kecamatan || "",
-            alamat_ktp_kota: s.alamat_kabupaten || "",
-            tinggi_badan: s.tinggi_badan || "",
-            berat_badan: s.berat_badan || "",
-            lingkar_pinggang: s.lingkar_pinggang || "",
-            ukuran_kaki: s.ukuran_kaki || "",
-            dominan_tangan: s.dominan_tangan || "Kanan",
-            hobi: s.hobi ? (typeof s.hobi === "string" ? s.hobi.split(/,\s*/) : s.hobi) : [],
-            keahlian: s.keahlian ? (typeof s.keahlian === "string" ? s.keahlian.split(/,\s*/) : s.keahlian) : [],
-            kelebihan: s.tiga_kelebihan ? (typeof s.tiga_kelebihan === "string" ? s.tiga_kelebihan.split(/,\s*/) : s.tiga_kelebihan) : [],
-            tujuan_ke_jepang: s.tiga_tujuan_jepang ? (typeof s.tiga_tujuan_jepang === "string" ? s.tiga_tujuan_jepang.split(/,\s*/) : s.tiga_tujuan_jepang) : [],
-            tujuan_pulang: s.tujuan_pulang ? (typeof s.tujuan_pulang === "string" ? s.tujuan_pulang.split(/,\s*/) : s.tujuan_pulang) : [],
-            pendidikan: {
-              sd: { nama: s.sd_nama || "", tahun_masuk: s.sd_tahun_masuk || "", tahun_lulus: s.sd_tahun_lulus || "" },
-              smp: { nama: s.smp_nama || "", tahun_masuk: s.smp_tahun_masuk || "", tahun_lulus: s.smp_tahun_lulus || "" },
-              sma: { nama: s.sma_nama || "", jurusan: s.sma_jurusan || "", tahun_masuk: s.sma_tahun_masuk || "", tahun_lulus: s.sma_tahun_lulus || "" },
-              universitas: { nama: s.univ_nama || "", jurusan: s.univ_jurusan || "", tahun_masuk: s.univ_tahun_masuk || "", tahun_lulus: s.univ_tahun_lulus || "" }
-            },
-            pekerjaan: [
-              { nama_perusahaan: s.pekerjaan1_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan1_jenis || "", tahun_masuk: s.pekerjaan1_tahun_masuk || "", bulan_masuk: s.pekerjaan1_bulan_masuk || "", tahun_keluar: s.pekerjaan1_tahun_keluar || "", bulan_keluar: s.pekerjaan1_bulan_keluar || "" },
-              { nama_perusahaan: s.pekerjaan2_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan2_jenis || "", tahun_masuk: s.pekerjaan2_tahun_masuk || "", bulan_masuk: s.pekerjaan2_bulan_masuk || "", tahun_keluar: s.pekerjaan2_tahun_keluar || "", bulan_keluar: s.pekerjaan2_bulan_keluar || "" },
-              { nama_perusahaan: s.pekerjaan3_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan3_jenis || "", tahun_masuk: s.pekerjaan3_tahun_masuk || "", bulan_masuk: s.pekerjaan3_bulan_masuk || "", tahun_keluar: s.pekerjaan3_tahun_keluar || "", bulan_keluar: s.pekerjaan3_bulan_keluar || "" },
-              { nama_perusahaan: s.pekerjaan4_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan4_jenis || "", tahun_masuk: s.pekerjaan4_tahun_masuk || "", bulan_masuk: s.pekerjaan4_bulan_masuk || "", tahun_keluar: s.pekerjaan4_tahun_keluar || "", bulan_keluar: s.pekerjaan4_bulan_keluar || "" },
-              { nama_perusahaan: s.pekerjaan5_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan5_jenis || "", tahun_masuk: s.pekerjaan5_tahun_masuk || "", bulan_masuk: s.pekerjaan5_bulan_masuk || "", tahun_keluar: s.pekerjaan5_tahun_keluar || "", bulan_keluar: s.pekerjaan5_bulan_keluar || "" }
-            ],
-            keluarga: {
-              ayah: { nama: s.ayah_nama || "", usia: s.ayah_usia || "", pekerjaan: s.ayah_pekerjaan || "", nomor_hp: s.ayah_hp || "" },
-              ibu: { nama: s.ibu_nama || "", usia: s.ibu_usia || "", pekerjaan: s.ibu_pekerjaan || "", nomor_hp: s.ibu_hp || "" },
-              saudara: [
-                { jenis: s.saudara1_jenis || "", nama: s.saudara1_nama || "", usia: s.saudara1_usia || "", pekerjaan: s.saudara1_pekerjaan || "" },
-                { jenis: s.saudara2_jenis || "", nama: s.saudara2_nama || "", usia: s.saudara2_usia || "", pekerjaan: s.saudara2_pekerjaan || "" },
-                { jenis: s.saudara3_jenis || "", nama: s.saudara3_nama || "", usia: s.saudara3_usia || "", pekerjaan: s.saudara3_pekerjaan || "" },
-                { jenis: s.saudara4_jenis || "", nama: s.saudara4_nama || "", usia: s.saudara4_usia || "", pekerjaan: s.saudara4_pekerjaan || "" },
-                { jenis: s.saudara5_jenis || "", nama: s.saudara5_nama || "", usia: s.saudara5_usia || "", pekerjaan: s.saudara5_pekerjaan || "" }
-              ]
-            },
-            health: { merokok: s.merokok === "Ya", alkohol: s.minum_alkohol === "Ya", paspor: s.memiliki_paspor === "Ya", sehat: s.sehat === "Ya", penyakit_bawaan: s.penyakit_bawaan || "", pernah_operasi: s.pernah_operasi || "", alergi: s.alergi || "" },
-            dokumen_surat: (typeof s.dokumen_surat === "string" ? s.dokumen_surat : (Array.isArray(s.dokumen_surat) ? s.dokumen_surat[0] || "" : "")),
-            program: s.program || "Magang",
-            rencana_pembayaran: s.rencana_pembayaran || "Biaya Mandiri",
-            pasangan: { nama: s.pasangan_nama || "", nomor_hp: s.pasangan_hp || "" },
-            gaji_terakhir: s.gaji_terakhir ?? "",
-            pernah_tes_so: s.pernah_tes_so ?? "",
-            kekurangan: s.satu_kekurangan ?? s.kekurangan ?? "",
-            status: s.status || "Aktif",
-            cuti_mulai: s.cuti_mulai || "",
-            cuti_selesai: s.cuti_selesai || "",
-            tanggal_pengunduran: s.tanggal_pengunduran || "",
+          id: s.id,
+          nis: s.nis || "",
+          angkatan: s.angkatan || "",
+          tanggal_masuk: s.tanggal_masuk || "",
+          nama: s.nama_lengkap || s.nama || "",
+          nomor_ktp: s.nomor_ktp ? String(s.nomor_ktp) : "",
+          jenis_kelamin: s.jenis_kelamin || "Laki-laki",
+          tempat_lahir: s.tempat_lahir || "",
+          tanggal_lahir: s.tanggal_lahir || "",
+          usia: s.usia || "",
+          agama: s.agama || "Islam",
+          golongan_darah: s.golongan_darah || "",
+          status_pernikahan: s.status_pernikahan || "Belum Menikah",
+          nomor_wa: s.nomor_wa || "",
+          email: s.email || "",
+          asal_daerah: s.asal_daerah || "",
+          alamat_ktp_jalan: s.alamat_jalan || "",
+          alamat_ktp_rt: s.alamat_rt || "",
+          alamat_ktp_rw: s.alamat_rw || "",
+          alamat_ktp_kelurahan: s.alamat_kelurahan || "",
+          alamat_ktp_kecamatan: s.alamat_kecamatan || "",
+          alamat_ktp_kota: s.alamat_kabupaten || "",
+          tinggi_badan: s.tinggi_badan || "",
+          berat_badan: s.berat_badan || "",
+          lingkar_pinggang: s.lingkar_pinggang || "",
+          ukuran_kaki: s.ukuran_kaki || "",
+          dominan_tangan: s.dominan_tangan || "Kanan",
+          hobi: s.hobi ? (typeof s.hobi === "string" ? s.hobi.split(/,\s*/) : s.hobi) : [],
+          keahlian: s.keahlian ? (typeof s.keahlian === "string" ? s.keahlian.split(/,\s*/) : s.keahlian) : [],
+          kelebihan: s.tiga_kelebihan ? (typeof s.tiga_kelebihan === "string" ? s.tiga_kelebihan.split(/,\s*/) : s.tiga_kelebihan) : [],
+          tujuan_ke_jepang: s.tiga_tujuan_jepang ? (typeof s.tiga_tujuan_jepang === "string" ? s.tiga_tujuan_jepang.split(/,\s*/) : s.tiga_tujuan_jepang) : [],
+          tujuan_pulang: s.tujuan_pulang ? (typeof s.tujuan_pulang === "string" ? s.tujuan_pulang.split(/,\s*/) : s.tujuan_pulang) : [],
+          pendidikan: {
+            sd: { nama: s.sd_nama || "", tahun_masuk: s.sd_tahun_masuk || "", tahun_lulus: s.sd_tahun_lulus || "" },
+            smp: { nama: s.smp_nama || "", tahun_masuk: s.smp_tahun_masuk || "", tahun_lulus: s.smp_tahun_lulus || "" },
+            sma: { nama: s.sma_nama || "", jurusan: s.sma_jurusan || "", tahun_masuk: s.sma_tahun_masuk || "", tahun_lulus: s.sma_tahun_lulus || "" },
+            universitas: { nama: s.univ_nama || "", jurusan: s.univ_jurusan || "", tahun_masuk: s.univ_tahun_masuk || "", tahun_lulus: s.univ_tahun_lulus || "" }
+          },
+          pekerjaan: [
+            { nama_perusahaan: s.pekerjaan1_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan1_jenis || "", tahun_masuk: s.pekerjaan1_tahun_masuk || "", bulan_masuk: s.pekerjaan1_bulan_masuk || "", tahun_keluar: s.pekerjaan1_tahun_keluar || "", bulan_keluar: s.pekerjaan1_bulan_keluar || "" },
+            { nama_perusahaan: s.pekerjaan2_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan2_jenis || "", tahun_masuk: s.pekerjaan2_tahun_masuk || "", bulan_masuk: s.pekerjaan2_bulan_masuk || "", tahun_keluar: s.pekerjaan2_tahun_keluar || "", bulan_keluar: s.pekerjaan2_bulan_keluar || "" },
+            { nama_perusahaan: s.pekerjaan3_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan3_jenis || "", tahun_masuk: s.pekerjaan3_tahun_masuk || "", bulan_masuk: s.pekerjaan3_bulan_masuk || "", tahun_keluar: s.pekerjaan3_tahun_keluar || "", bulan_keluar: s.pekerjaan3_bulan_keluar || "" },
+            { nama_perusahaan: s.pekerjaan4_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan4_jenis || "", tahun_masuk: s.pekerjaan4_tahun_masuk || "", bulan_masuk: s.pekerjaan4_bulan_masuk || "", tahun_keluar: s.pekerjaan4_tahun_keluar || "", bulan_keluar: s.pekerjaan4_bulan_keluar || "" },
+            { nama_perusahaan: s.pekerjaan5_nama_perusahaan || "", jenis_pekerjaan: s.pekerjaan5_jenis || "", tahun_masuk: s.pekerjaan5_tahun_masuk || "", bulan_masuk: s.pekerjaan5_bulan_masuk || "", tahun_keluar: s.pekerjaan5_tahun_keluar || "", bulan_keluar: s.pekerjaan5_bulan_keluar || "" }
+          ],
+          keluarga: {
+            ayah: { nama: s.ayah_nama || "", usia: s.ayah_usia || "", pekerjaan: s.ayah_pekerjaan || "", nomor_hp: s.ayah_hp || "" },
+            ibu: { nama: s.ibu_nama || "", usia: s.ibu_usia || "", pekerjaan: s.ibu_pekerjaan || "", nomor_hp: s.ibu_hp || "" },
+            saudara: [
+              { jenis: s.saudara1_jenis || "", nama: s.saudara1_nama || "", usia: s.saudara1_usia || "", pekerjaan: s.saudara1_pekerjaan || "" },
+              { jenis: s.saudara2_jenis || "", nama: s.saudara2_nama || "", usia: s.saudara2_usia || "", pekerjaan: s.saudara2_pekerjaan || "" },
+              { jenis: s.saudara3_jenis || "", nama: s.saudara3_nama || "", usia: s.saudara3_usia || "", pekerjaan: s.saudara3_pekerjaan || "" },
+              { jenis: s.saudara4_jenis || "", nama: s.saudara4_nama || "", usia: s.saudara4_usia || "", pekerjaan: s.saudara4_pekerjaan || "" },
+              { jenis: s.saudara5_jenis || "", nama: s.saudara5_nama || "", usia: s.saudara5_usia || "", pekerjaan: s.saudara5_pekerjaan || "" }
+            ]
+          },
+          health: { merokok: s.merokok === "Ya", alkohol: s.minum_alkohol === "Ya", paspor: s.memiliki_paspor === "Ya", sehat: s.sehat === "Ya", penyakit_bawaan: s.penyakit_bawaan || "", pernah_operasi: s.pernah_operasi || "", alergi: s.alergi || "" },
+          dokumen_surat: (typeof s.dokumen_surat === "string" ? s.dokumen_surat : (Array.isArray(s.dokumen_surat) ? s.dokumen_surat[0] || "" : "")),
+          program: s.program || "Magang",
+          rencana_pembayaran: s.rencana_pembayaran || "Biaya Mandiri",
+          pasangan: { nama: s.pasangan_nama || "", nomor_hp: s.pasangan_hp || "" },
+          gaji_terakhir: s.gaji_terakhir ?? "",
+          pernah_tes_so: s.pernah_tes_so ?? "",
+          kekurangan: s.satu_kekurangan ?? s.kekurangan ?? "",
+          status: s.status || "Aktif",
+          cuti_mulai: s.cuti_mulai || "",
+          cuti_selesai: s.cuti_selesai || "",
+          tanggal_pengunduran: s.tanggal_pengunduran || "",
         }));
       } catch (err) {
         setError(err.message);
@@ -424,6 +604,25 @@ export default function StudentEdit() {
       const { data, error } = await supabase.from("students").update(payload).eq("id", form.id).select().single();
       if (error) throw error;
 
+      // === UPLOAD FOTO JIKA ADA YANG BARU ===
+      if (photoFile) {
+        try {
+          const fotoUrl = await uploadPhoto(form.id);
+
+          await supabase
+            .from("students")
+            .update({ foto_url: fotoUrl })
+            .eq("id", form.id);
+
+          // 🔥 PENTING
+          setExistingPhotoUrl(fotoUrl);
+          setPhotoPreview(fotoUrl);
+          setPhotoFile(null);
+        } catch (err) {
+          console.warn("Upload foto gagal", err);
+        }
+      }
+
       navigate("/students");
     } catch (err) {
       console.error(err);
@@ -433,413 +632,560 @@ export default function StudentEdit() {
     }
   };
 
+
   return (
-    <div className="space-y-6 card shadow-sm rounded-2xl p-6 bg-white">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl 
+    <>
+      {
+        showCropModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+            <div className="bg-white rounded-xl w-full max-w-lg overflow-hidden">
+              <div className="p-4 border-b font-semibold flex items-center gap-2">
+                <Crop size={18} />
+                Crop Foto
+              </div>
+
+              <div className="relative h-80 bg-gray-200">
+                <Cropper
+                  image={imageToCrop}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={3 / 4}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                />
+              </div>
+
+              <div className="p-4 flex items-center gap-3">
+                <ZoomOut size={16} />
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  value={zoom}
+                  onChange={(e) => setZoom(+e.target.value)}
+                  className="flex-1"
+                />
+                <ZoomIn size={16} />
+              </div>
+
+              <div className="p-4 flex justify-end gap-3 border-t">
+                <button onClick={handleCropCancel} className="px-4 py-2 border rounded-xl">
+                  Batal
+                </button>
+                <button
+                  onClick={handleCropConfirm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl"
+                >
+                  Terapkan
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+      <div className="space-y-6 card shadow-sm rounded-2xl p-6 bg-white">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl 
                   bg-gray-200 hover:bg-gray-300 
                   absolute top-16 right-16
                   text-gray-700 font-medium shadow-sm 
                   transition active:scale-95"
-      >
-        <ArrowLeft size={18} />
-        Kembali
-      </button>
+        >
+          <ArrowLeft size={18} />
+          Kembali
+        </button>
 
-      <h2 className="text-2xl font-bold text-left mb-6">Edit Data Siswa</h2>
-      {loading ? <div>Loading...</div> : (
-        <form onSubmit={save} className="grid grid-cols-1 gap-3">
-          <div className="grid grid-cols-4 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">NIS</label>
-              <input value={form.nis} readOnly className="p-2 border rounded w-full bg-slate-100" />
+        <h2 className="text-2xl font-bold text-left mb-6">Edit Data Siswa</h2>
+        {loading ? <div>Loading...</div> : (
+          <form onSubmit={save} className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">NIS</label>
+                <input value={form.nis} readOnly className="p-2 border rounded w-full bg-slate-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Angkatan</label>
+                <input value={form.angkatan} onChange={(e) => setField("angkatan", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tanggal Masuk</label>
+                <input type="date" value={form.tanggal_masuk} onChange={(e) => setField("tanggal_masuk", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Status</label>
+                <select value={form.status} onChange={(e) => setField("status", e.target.value)} className="p-2 border rounded w-full">
+                  <option value="Aktif">Aktif</option>
+                  <option value="Tidak Aktif">Tidak Aktif</option>
+                  <option value="Diklat SO">Diklat SO</option>
+                  <option value="Diterima SO">Diterima SO</option>
+                  <option value="Cuti">Cuti</option>
+                  <option value="Pengunduran Diri">Pengunduran Diri</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Angkatan</label>
-              <input value={form.angkatan} onChange={(e) => setField("angkatan", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tanggal Masuk</label>
-              <input type="date" value={form.tanggal_masuk} onChange={(e) => setField("tanggal_masuk", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Status</label>
-              <select value={form.status} onChange={(e) => setField("status", e.target.value)} className="p-2 border rounded w-full">
-                <option value="Aktif">Aktif</option>
-                <option value="Tidak Aktif">Tidak Aktif</option>
-                <option value="Diklat SO">Diklat SO</option>
-                <option value="Diterima SO">Diterima SO</option>
-                <option value="Cuti">Cuti</option>
-                <option value="Pengunduran Diri">Pengunduran Diri</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Cuti Mulai</label>
-              <input
-                type="date"
-                value={form.cuti_mulai}
-                onChange={(e) => setField("cuti_mulai", e.target.value)}
-                className="p-2 border rounded w-full"
-              />
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Cuti Mulai</label>
+                <input
+                  type="date"
+                  value={form.cuti_mulai}
+                  onChange={(e) => setField("cuti_mulai", e.target.value)}
+                  className="p-2 border rounded w-full"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Cuti Selesai</label>
+                <input
+                  type="date"
+                  value={form.cuti_selesai}
+                  onChange={(e) => setField("cuti_selesai", e.target.value)}
+                  className="p-2 border rounded w-full"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tanggal Pengunduran</label>
+                <input
+                  type="date"
+                  value={form.tanggal_pengunduran}
+                  onChange={(e) => setField("tanggal_pengunduran", e.target.value)}
+                  className="p-2 border rounded w-full"
+                />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Cuti Selesai</label>
-              <input
-                type="date"
-                value={form.cuti_selesai}
-                onChange={(e) => setField("cuti_selesai", e.target.value)}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tanggal Pengunduran</label>
-              <input
-                type="date"
-                value={form.tanggal_pengunduran}
-                onChange={(e) => setField("tanggal_pengunduran", e.target.value)}
-                className="p-2 border rounded w-full"
-              />
-            </div>
-          </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 text-sm font-medium">Nama Lengkap</label>
-              <input value={form.nama} onChange={(e) => setField("nama", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-          </div>
+            <div className="">
+              {/* === FOTO SISWA === */}
+              <div
+                className="flex flex-col items-center sm:flex-row sm:items-start gap-6 p-4 rounded-xl"
+                style={{
+                  background: "var(--akira-bg)",
+                  border: "1px solid var(--akira-border)",
+                }}
+              >
+                {/* Photo Preview */}
+                <div className="relative group">
+                  <div
+                    className="w-36 h-44 rounded-xl overflow-hidden border-2 border-dashed bg-white flex items-center justify-center shadow-sm transition-all duration-300"
+                    style={{ borderColor: "var(--akira-border)" }}
+                  >
+                    {photoPreview ? (
+                      <img
+                        src={photoPreview}
+                        alt="Preview foto siswa"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex flex-col items-center"
+                        style={{ color: "var(--akira-gray)", opacity: 0.5 }}
+                      >
+                        <User size={48} strokeWidth={1.5} />
+                        <span className="text-xs mt-2">Foto Siswa</span>
+                      </div>
+                    )}
+                  </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Hobi (pisahkan dengan koma)</label>
-              <textarea value={tempHobi} onChange={(e) => setTempHobi(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+                  {photoPreview && (
+                    <button
+                      type="button"
+                      onClick={removePhoto}
+                      className="absolute -top-2 -right-2 w-7 h-7 text-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 hover:opacity-90"
+                      style={{ background: "var(--akira-red)" }}
+                      title="Hapus foto"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Upload Controls */}
+                <div className="flex flex-col gap-3 flex-1">
+                  <div>
+                    <h4
+                      className="font-medium mb-1"
+                      style={{ color: "var(--akira-gray)" }}
+                    >
+                      Upload Foto Siswa
+                    </h4>
+                    <p
+                      className="text-sm"
+                      style={{ color: "var(--akira-gray)", opacity: 0.7 }}
+                    >
+                      Foto akan di-crop ke rasio 3:4 (300×400px) secara otomatis. Format JPG,
+                      ukuran &lt; 100KB.
+                    </p>
+                  </div>
+
+                  <label className="cursor-pointer w-fit">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <div
+                      className="inline-flex items-center gap-2 px-4 py-2.5 text-white font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 hover:opacity-90"
+                      style={{ background: "var(--akira-red)" }}
+                    >
+                      <Upload size={18} />
+                      {photoPreview ? "Ganti Foto" : "Pilih Foto"}
+                    </div>
+                  </label>
+
+                  {uploadingPhoto && (
+                    <div
+                      className="flex items-center gap-2 text-sm"
+                      style={{ color: "var(--akira-red)" }}
+                    >
+                      <div
+                        className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                        style={{
+                          borderColor: "var(--akira-red)",
+                          borderTopColor: "transparent",
+                        }}
+                      />
+                      Mengupload foto...
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1">
+                <label className="mb-1.5 text-sm font-medium">Nama Lengkap</label>
+                <input value={form.nama} onChange={(e) => setField("nama", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Keahlian (pisahkan dengan koma)</label>
-              <textarea value={tempKeahlian} onChange={(e) => setTempKeahlian(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Hobi (pisahkan dengan koma)</label>
+                <textarea value={tempHobi} onChange={(e) => setTempHobi(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Keahlian (pisahkan dengan koma)</label>
+                <textarea value={tempKeahlian} onChange={(e) => setTempKeahlian(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tiga Kelebihan (pisahkan dengan koma)</label>
+                <textarea value={tempKelebihan} onChange={(e) => setTempKelebihan(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tiga Tujuan ke Jepang (pisahkan dengan koma)</label>
+                <textarea value={tempTujuanKeJepang} onChange={(e) => setTempTujuanKeJepang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tujuan Pulang (pisahkan dengan koma)</label>
+                <textarea value={tempTujuanPulang} onChange={(e) => setTempTujuanPulang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tiga Kelebihan (pisahkan dengan koma)</label>
-              <textarea value={tempKelebihan} onChange={(e) => setTempKelebihan(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="mb-1.5 text-sm font-medium">Nomor KTP</label>
+                <input value={form.nomor_ktp} onChange={(e) => setField("nomor_ktp", e.target.value.replace(/\D/g, ""))} maxLength={16} className="p-2 border rounded w-full" />
+              </div>
+              <div className="w-48">
+                <label className="mb-1.5 text-sm font-medium">Nomor WA</label>
+                <input value={form.nomor_wa} onChange={(e) => setField("nomor_wa", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div className="w-64">
+                <label className="mb-1.5 text-sm font-medium">Email</label>
+                <input type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tiga Tujuan ke Jepang (pisahkan dengan koma)</label>
-              <textarea value={tempTujuanKeJepang} onChange={(e) => setTempTujuanKeJepang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tinggi Badan (cm)</label>
+                <input value={form.tinggi_badan} onChange={(e) => setField("tinggi_badan", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Berat Badan (kg)</label>
+                <input value={form.berat_badan} onChange={(e) => setField("berat_badan", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Ukuran Kaki</label>
+                <input value={form.ukuran_kaki} onChange={(e) => setField("ukuran_kaki", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Hobi (pisahkan dengan koma)</label>
+                <textarea value={tempHobi} onChange={(e) => setTempHobi(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Keahlian (pisahkan dengan koma)</label>
+                <textarea value={tempKeahlian} onChange={(e) => setTempKeahlian(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tiga Kelebihan (pisahkan dengan koma)</label>
+                <textarea value={tempKelebihan} onChange={(e) => setTempKelebihan(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Tiga Tujuan ke Jepang (pisahkan dengan koma)</label>
+                <textarea value={tempTujuanKeJepang} onChange={(e) => setTempTujuanKeJepang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="mb-1.5 text-sm font-medium">Satu Kekurangan</label>
+            </div>
+
             <div>
               <label className="mb-1.5 text-sm font-medium">Tujuan Pulang (pisahkan dengan koma)</label>
               <textarea value={tempTujuanPulang} onChange={(e) => setTempTujuanPulang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 text-sm font-medium">Nomor KTP</label>
-              <input value={form.nomor_ktp} onChange={(e) => setField("nomor_ktp", e.target.value.replace(/\D/g, ""))} maxLength={16} className="p-2 border rounded w-full" />
-            </div>
-            <div className="w-48">
-              <label className="mb-1.5 text-sm font-medium">Nomor WA</label>
-              <input value={form.nomor_wa} onChange={(e) => setField("nomor_wa", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div className="w-64">
-              <label className="mb-1.5 text-sm font-medium">Email</label>
-              <input type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tinggi Badan (cm)</label>
-              <input value={form.tinggi_badan} onChange={(e) => setField("tinggi_badan", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Berat Badan (kg)</label>
-              <input value={form.berat_badan} onChange={(e) => setField("berat_badan", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Ukuran Kaki</label>
-              <input value={form.ukuran_kaki} onChange={(e) => setField("ukuran_kaki", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Hobi (pisahkan dengan koma)</label>
-              <textarea value={tempHobi} onChange={(e) => setTempHobi(e.target.value)} className="p-2 border rounded w-full" rows={2} />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Keahlian (pisahkan dengan koma)</label>
-              <textarea value={tempKeahlian} onChange={(e) => setTempKeahlian(e.target.value)} className="p-2 border rounded w-full" rows={2} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tiga Kelebihan (pisahkan dengan koma)</label>
-              <textarea value={tempKelebihan} onChange={(e) => setTempKelebihan(e.target.value)} className="p-2 border rounded w-full" rows={2} />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Tiga Tujuan ke Jepang (pisahkan dengan koma)</label>
-              <textarea value={tempTujuanKeJepang} onChange={(e) => setTempTujuanKeJepang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
-            </div>
-          </div>
-          <div className="mt-2">
-            <label className="mb-1.5 text-sm font-medium">Satu Kekurangan</label>
-          </div>
-
-          <div>
-            <label className="mb-1.5 text-sm font-medium">Tujuan Pulang (pisahkan dengan koma)</label>
-            <textarea value={tempTujuanPulang} onChange={(e) => setTempTujuanPulang(e.target.value)} className="p-2 border rounded w-full" rows={2} />
-          </div>
-
-          <div className="mt-3">
-            <h3 className="text-xl font-semibold">Pendidikan</h3>
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SD Nama</label>
-                <input value={form.pendidikan.sd.nama} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SD Tahun Masuk</label>
-                <input value={form.pendidikan.sd.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SD Tahun Lulus</label>
-                <input value={form.pendidikan.sd.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMP Nama</label>
-                <input value={form.pendidikan.smp.nama} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMP Tahun Masuk</label>
-                <input value={form.pendidikan.smp.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMP Tahun Lulus</label>
-                <input value={form.pendidikan.smp.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMA Nama</label>
-                <input value={form.pendidikan.sma.nama} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMA Jurusan</label>
-                <input value={form.pendidikan.sma.jurusan} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, jurusan: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMA Tahun Masuk</label>
-                <input value={form.pendidikan.sma.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">SMA Tahun Lulus</label>
-                <input value={form.pendidikan.sma.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Universitas Nama</label>
-                <input value={form.pendidikan.universitas.nama} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Univ Tahun Masuk</label>
-                <input value={form.pendidikan.universitas.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Univ Tahun Lulus</label>
-                <input value={form.pendidikan.universitas.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <h3 className="text-xl font-semibold">Riwayat Pekerjaan (Maks 5)</h3>
-            {(Array.from({ length: 5 }).map((_, idx) => (
-              <div key={idx} className="grid grid-cols-3 gap-3 mt-2">
+            <div className="mt-3">
+              <h3 className="text-xl font-semibold">Pendidikan</h3>
+              <div className="grid grid-cols-2 gap-3 mt-2">
                 <div>
-                  <label className="mb-1.5 text-sm font-medium">Nama Perusahaan #{idx + 1}</label>
-                  <input value={form.pekerjaan[idx]?.nama_perusahaan || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "nama_perusahaan", e.target.value)} className="p-2 border rounded w-full" />
+                  <label className="mb-1.5 text-sm font-medium">SD Nama</label>
+                  <input value={form.pendidikan.sd.nama} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, nama: e.target.value })} className="p-2 border rounded w-full" />
                 </div>
                 <div>
-                  <label className="mb-1.5 text-sm font-medium">Jenis Pekerjaan</label>
-                  <input value={form.pekerjaan[idx]?.jenis_pekerjaan || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "jenis_pekerjaan", e.target.value)} className="p-2 border rounded w-full" />
+                  <label className="mb-1.5 text-sm font-medium">SD Tahun Masuk</label>
+                  <input value={form.pendidikan.sd.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <input placeholder="Th Masuk" value={form.pekerjaan[idx]?.tahun_masuk || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_masuk", e.target.value)} className="p-2 border rounded w-full" />
-                  <input placeholder="Bln Masuk" value={form.pekerjaan[idx]?.bulan_masuk || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_masuk", e.target.value)} className="p-2 border rounded w-full" />
-                  <input placeholder="Th Keluar" value={form.pekerjaan[idx]?.tahun_keluar || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_keluar", e.target.value)} className="p-2 border rounded w-full" />
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SD Tahun Lulus</label>
+                  <input value={form.pendidikan.sd.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "sd", { ...form.pendidikan.sd, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
                 </div>
-              </div>
-            )))}
-          </div>
-
-          <div className="mt-3">
-            <h3 className="text-xl font-semibold">Keluarga</h3>
-            <div className="grid grid-cols-2 gap-3 mt-2">
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Nama Ayah</label>
-                <input value={form.keluarga?.ayah?.nama || ""} onChange={(e) => handleNestedField("keluarga", "ayah", { ...form.keluarga.ayah, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Usia Ayah</label>
-                <input value={form.keluarga?.ayah?.usia || ""} onChange={(e) => handleNestedField("keluarga", "ayah", { ...form.keluarga.ayah, usia: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Nama Ibu</label>
-                <input value={form.keluarga?.ibu?.nama || ""} onChange={(e) => handleNestedField("keluarga", "ibu", { ...form.keluarga.ibu, nama: e.target.value })} className="p-2 border rounded w-full" />
-              </div>
-              <div>
-                <label className="mb-1.5 text-sm font-medium">Usia Ibu</label>
-                <input value={form.keluarga?.ibu?.usia || ""} onChange={(e) => handleNestedField("keluarga", "ibu", { ...form.keluarga.ibu, usia: e.target.value })} className="p-2 border rounded w-full" />
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMP Nama</label>
+                  <input value={form.pendidikan.smp.nama} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, nama: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMP Tahun Masuk</label>
+                  <input value={form.pendidikan.smp.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMP Tahun Lulus</label>
+                  <input value={form.pendidikan.smp.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "smp", { ...form.pendidikan.smp, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMA Nama</label>
+                  <input value={form.pendidikan.sma.nama} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, nama: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMA Jurusan</label>
+                  <input value={form.pendidikan.sma.jurusan} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, jurusan: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMA Tahun Masuk</label>
+                  <input value={form.pendidikan.sma.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">SMA Tahun Lulus</label>
+                  <input value={form.pendidikan.sma.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "sma", { ...form.pendidikan.sma, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Universitas Nama</label>
+                  <input value={form.pendidikan.universitas.nama} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, nama: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Univ Tahun Masuk</label>
+                  <input value={form.pendidikan.universitas.tahun_masuk} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, tahun_masuk: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Univ Tahun Lulus</label>
+                  <input value={form.pendidikan.universitas.tahun_lulus} onChange={(e) => handleNestedField("pendidikan", "universitas", { ...form.pendidikan.universitas, tahun_lulus: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
               </div>
             </div>
 
-            <div className="mt-2">
-              <h4 className="font-medium">Saudara</h4>
+            <div className="mt-3">
+              <h3 className="text-xl font-semibold">Riwayat Pekerjaan (Maks 5)</h3>
               {(Array.from({ length: 5 }).map((_, idx) => (
-                <div key={idx} className="grid grid-cols-4 gap-2 mt-2">
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium">Jenis</label>
-                    <select value={form.keluarga?.saudara?.[idx]?.jenis || ""} onChange={(e) => handleKeluargaSaudara(idx, "jenis", e.target.value)} className="p-2 border rounded">
-                      <option value="">Pilih</option>
-                      <option value="Adik Laki-laki">Adik Laki-laki</option>
-                      <option value="Adik Perempuan">Adik Perempuan</option>
-                      <option value="Kakak Laki-laki">Kakak Laki-laki</option>
-                      <option value="Kakak Perempuan">Kakak Perempuan</option>
-                    </select>
+                <div key={idx} className="grid grid-cols-3 gap-3 mt-2">
+                  <div>
+                    <label className="mb-1.5 text-sm font-medium">Nama Perusahaan #{idx + 1}</label>
+                    <input value={form.pekerjaan[idx]?.nama_perusahaan || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "nama_perusahaan", e.target.value)} className="p-2 border rounded w-full" />
                   </div>
-
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium">Nama</label>
-                    <input placeholder="Nama" value={form.keluarga?.saudara?.[idx]?.nama || ""} onChange={(e) => handleKeluargaSaudara(idx, "nama", e.target.value)} className="p-2 border rounded" />
+                  <div>
+                    <label className="mb-1.5 text-sm font-medium">Jenis Pekerjaan</label>
+                    <input value={form.pekerjaan[idx]?.jenis_pekerjaan || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "jenis_pekerjaan", e.target.value)} className="p-2 border rounded w-full" />
                   </div>
-
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium">Usia</label>
-                    <input placeholder="Usia" value={form.keluarga?.saudara?.[idx]?.usia || ""} onChange={(e) => handleKeluargaSaudara(idx, "usia", e.target.value)} className="p-2 border rounded" />
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label className="mb-1.5 text-sm font-medium">Pekerjaan</label>
-                    <input placeholder="Pekerjaan" value={form.keluarga?.saudara?.[idx]?.pekerjaan || ""} onChange={(e) => handleKeluargaSaudara(idx, "pekerjaan", e.target.value)} className="p-2 border rounded" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input placeholder="Th Masuk" value={form.pekerjaan[idx]?.tahun_masuk || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_masuk", e.target.value)} className="p-2 border rounded w-full" />
+                    <input placeholder="Bln Masuk" value={form.pekerjaan[idx]?.bulan_masuk || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_masuk", e.target.value)} className="p-2 border rounded w-full" />
+                    <input placeholder="Th Keluar" value={form.pekerjaan[idx]?.tahun_keluar || ""} onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_keluar", e.target.value)} className="p-2 border rounded w-full" />
                   </div>
                 </div>
               )))}
             </div>
-          </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Gaji Terakhir</label>
-              <input value={form.gaji_terakhir || ""} onChange={(e) => setField("gaji_terakhir", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Pernah Tes SO (0/1)</label>
-              <input value={form.pernah_tes_so || ""} onChange={(e) => setField("pernah_tes_so", e.target.value)} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Program</label>
-              <select value={form.program} onChange={(e) => setField("program", e.target.value)} className="p-2 border rounded w-full">
-                <option value="Magang">Magang</option>
-                <option value="Kontrak">Kontrak</option>
-              </select>
-            </div>
-          </div>
+            <div className="mt-3">
+              <h3 className="text-xl font-semibold">Keluarga</h3>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Nama Ayah</label>
+                  <input value={form.keluarga?.ayah?.nama || ""} onChange={(e) => handleNestedField("keluarga", "ayah", { ...form.keluarga.ayah, nama: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Usia Ayah</label>
+                  <input value={form.keluarga?.ayah?.usia || ""} onChange={(e) => handleNestedField("keluarga", "ayah", { ...form.keluarga.ayah, usia: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Nama Ibu</label>
+                  <input value={form.keluarga?.ibu?.nama || ""} onChange={(e) => handleNestedField("keluarga", "ibu", { ...form.keluarga.ibu, nama: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+                <div>
+                  <label className="mb-1.5 text-sm font-medium">Usia Ibu</label>
+                  <input value={form.keluarga?.ibu?.usia || ""} onChange={(e) => handleNestedField("keluarga", "ibu", { ...form.keluarga.ibu, usia: e.target.value })} className="p-2 border rounded w-full" />
+                </div>
+              </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 text-sm font-medium">Nama Pasangan</label>
-              <input value={form.pasangan?.nama || ""} onChange={(e) => setField("pasangan", { ...(form.pasangan || {}), nama: e.target.value })} className="p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label className="mb-1.5 text-sm font-medium">HP Pasangan</label>
-              <input value={form.pasangan?.nomor_hp || ""} onChange={(e) => setField("pasangan", { ...(form.pasangan || {}), nomor_hp: e.target.value })} className="p-2 border rounded w-full" />
-            </div>
-          </div>
+              <div className="mt-2">
+                <h4 className="font-medium">Saudara</h4>
+                {(Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={idx} className="grid grid-cols-4 gap-2 mt-2">
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 text-sm font-medium">Jenis</label>
+                      <select value={form.keluarga?.saudara?.[idx]?.jenis || ""} onChange={(e) => handleKeluargaSaudara(idx, "jenis", e.target.value)} className="p-2 border rounded">
+                        <option value="">Pilih</option>
+                        <option value="Adik Laki-laki">Adik Laki-laki</option>
+                        <option value="Adik Perempuan">Adik Perempuan</option>
+                        <option value="Kakak Laki-laki">Kakak Laki-laki</option>
+                        <option value="Kakak Perempuan">Kakak Perempuan</option>
+                      </select>
+                    </div>
 
-          <div className="mt-3">
-            <h3 className="text-xl font-semibold">Health & Dokumentasi</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Merokok?</label>
-                <select value={form.health?.merokok} onChange={(e) => handleNestedField("health", "merokok", e.target.value === "true")} className="p-2 border rounded">
-                  <option value={true}>Ya</option>
-                  <option value={false}>Tidak</option>
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 text-sm font-medium">Nama</label>
+                      <input placeholder="Nama" value={form.keluarga?.saudara?.[idx]?.nama || ""} onChange={(e) => handleKeluargaSaudara(idx, "nama", e.target.value)} className="p-2 border rounded" />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 text-sm font-medium">Usia</label>
+                      <input placeholder="Usia" value={form.keluarga?.saudara?.[idx]?.usia || ""} onChange={(e) => handleKeluargaSaudara(idx, "usia", e.target.value)} className="p-2 border rounded" />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="mb-1.5 text-sm font-medium">Pekerjaan</label>
+                      <input placeholder="Pekerjaan" value={form.keluarga?.saudara?.[idx]?.pekerjaan || ""} onChange={(e) => handleKeluargaSaudara(idx, "pekerjaan", e.target.value)} className="p-2 border rounded" />
+                    </div>
+                  </div>
+                )))}
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Gaji Terakhir</label>
+                <input value={form.gaji_terakhir || ""} onChange={(e) => setField("gaji_terakhir", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Pernah Tes SO (0/1)</label>
+                <input value={form.pernah_tes_so || ""} onChange={(e) => setField("pernah_tes_so", e.target.value)} className="p-2 border rounded w-full" />
+              </div>
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Program</label>
+                <select value={form.program} onChange={(e) => setField("program", e.target.value)} className="p-2 border rounded w-full">
+                  <option value="Magang">Magang</option>
+                  <option value="Kontrak">Kontrak</option>
                 </select>
               </div>
+            </div>
 
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Minum Alkohol?</label>
-                <select value={form.health?.alkohol} onChange={(e) => handleNestedField("health", "alkohol", e.target.value === "true")} className="p-2 border rounded">
-                  <option value={true}>Ya</option>
-                  <option value={false}>Tidak</option>
-                </select>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 text-sm font-medium">Nama Pasangan</label>
+                <input value={form.pasangan?.nama || ""} onChange={(e) => setField("pasangan", { ...(form.pasangan || {}), nama: e.target.value })} className="p-2 border rounded w-full" />
               </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Memiliki Paspor?</label>
-                <select value={form.health?.paspor} onChange={(e) => handleNestedField("health", "paspor", e.target.value === "true")} className="p-2 border rounded">
-                  <option value={true}>Ya</option>
-                  <option value={false}>Tidak</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Sehat?</label>
-                <select value={form.health?.sehat} onChange={(e) => handleNestedField("health", "sehat", e.target.value === "true")} className="p-2 border rounded">
-                  <option value={true}>Ya</option>
-                  <option value={false}>Tidak</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Penyakit Bawaan (jika ada)</label>
-                <input placeholder="Penyakit Bawaan" value={form.health?.penyakit_bawaan || ""} onChange={(e) => handleNestedField("health", "penyakit_bawaan", e.target.value)} className="p-2 border rounded" />
-              </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Pernah Operasi (jika ada)</label>
-                <input placeholder="Pernah Operasi" value={form.health?.pernah_operasi || ""} onChange={(e) => handleNestedField("health", "pernah_operasi", e.target.value)} className="p-2 border rounded" />
-              </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Alergi (jika ada)</label>
-                <input placeholder="Alergi" value={form.health?.alergi || ""} onChange={(e) => handleNestedField("health", "alergi", e.target.value)} className="p-2 border rounded" />
-              </div>
-
-              <div className="flex flex-col">
-                <label className="mb-1.5 text-sm font-medium">Link Dokumen</label>
-                <input placeholder="https://drive.google.com/..." value={form.dokumen_surat} onChange={(e) => setField("dokumen_surat", e.target.value)} className="p-2 border rounded w-full" />
+              <div>
+                <label className="mb-1.5 text-sm font-medium">HP Pasangan</label>
+                <input value={form.pasangan?.nomor_hp || ""} onChange={(e) => setField("pasangan", { ...(form.pasangan || {}), nomor_hp: e.target.value })} className="p-2 border rounded w-full" />
               </div>
             </div>
-          </div>
 
-          {error && <div className="text-sm text-red-600">{error}</div>}
+            <div className="mt-3">
+              <h3 className="text-xl font-semibold">Health & Dokumentasi</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Merokok?</label>
+                  <select value={form.health?.merokok} onChange={(e) => handleNestedField("health", "merokok", e.target.value === "true")} className="p-2 border rounded">
+                    <option value={true}>Ya</option>
+                    <option value={false}>Tidak</option>
+                  </select>
+                </div>
 
-          <div className="flex flex-col items-end gap-3 mt-4">
-            {error && <div className="text-red-600 mb-2">{error}</div>}
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="px-4 py-2 rounded-xl border border-(--akira-border) text-(--akira-gray) hover:bg-gray-100 transition"
-              >
-                Batal
-              </button>
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Minum Alkohol?</label>
+                  <select value={form.health?.alkohol} onChange={(e) => handleNestedField("health", "alkohol", e.target.value === "true")} className="p-2 border rounded">
+                    <option value={true}>Ya</option>
+                    <option value={false}>Tidak</option>
+                  </select>
+                </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-5 py-2 rounded-xl font-medium text-white bg-(--akira-red) hover:bg-(--akira-red-dark) active:bg-(--akira-gray) shadow-sm transition disabled:opacity-60"
-              >
-                {saving ? "Menyimpan..." : "Simpan Perubahan"}
-              </button>
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Memiliki Paspor?</label>
+                  <select value={form.health?.paspor} onChange={(e) => handleNestedField("health", "paspor", e.target.value === "true")} className="p-2 border rounded">
+                    <option value={true}>Ya</option>
+                    <option value={false}>Tidak</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Sehat?</label>
+                  <select value={form.health?.sehat} onChange={(e) => handleNestedField("health", "sehat", e.target.value === "true")} className="p-2 border rounded">
+                    <option value={true}>Ya</option>
+                    <option value={false}>Tidak</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Penyakit Bawaan (jika ada)</label>
+                  <input placeholder="Penyakit Bawaan" value={form.health?.penyakit_bawaan || ""} onChange={(e) => handleNestedField("health", "penyakit_bawaan", e.target.value)} className="p-2 border rounded" />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Pernah Operasi (jika ada)</label>
+                  <input placeholder="Pernah Operasi" value={form.health?.pernah_operasi || ""} onChange={(e) => handleNestedField("health", "pernah_operasi", e.target.value)} className="p-2 border rounded" />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Alergi (jika ada)</label>
+                  <input placeholder="Alergi" value={form.health?.alergi || ""} onChange={(e) => handleNestedField("health", "alergi", e.target.value)} className="p-2 border rounded" />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="mb-1.5 text-sm font-medium">Link Dokumen</label>
+                  <input placeholder="https://drive.google.com/..." value={form.dokumen_surat} onChange={(e) => setField("dokumen_surat", e.target.value)} className="p-2 border rounded w-full" />
+                </div>
+              </div>
             </div>
-          </div>
-        </form>
-      )}
-    </div>
-  );
+
+            {error && <div className="text-sm text-red-600">{error}</div>}
+
+            <div className="flex flex-col items-end gap-3 mt-4">
+              {error && <div className="text-red-600 mb-2">{error}</div>}
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="px-4 py-2 rounded-xl border border-(--akira-border) text-(--akira-gray) hover:bg-gray-100 transition"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 rounded-xl font-medium text-white bg-(--akira-red) hover:bg-(--akira-red-dark) active:bg-(--akira-gray) shadow-sm transition disabled:opacity-60"
+                >
+                  {saving ? "Menyimpan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+      </div>
+    </>);
 }
