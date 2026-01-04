@@ -221,7 +221,35 @@ export default function StudentDetail() {
     cuti_selesai,
     tanggal_pengunduran,
 
-    foto_url
+    foto_url,
+
+    // Dokumen Pribadi
+    link_ktp,
+    link_kk,
+    link_akta_kelahiran,
+    link_ijazah,
+    link_transkrip_nilai,
+    link_skck,
+    link_npwp,
+
+    // Dokumen Keuangan
+    link_sertifikat_tanah,
+    link_sertifikat_rumah,
+    link_pbb,
+    link_ktp_ayah,
+    link_ktp_ibu,
+    link_buku_nikah_ortu,
+    link_surat_penghasilan,
+    link_sktm,
+
+    // Dokumen Keberangkatan
+    link_paspor,
+    link_coe,
+    link_visa,
+    link_tiket_pesawat,
+    link_asuransi_perjalanan,
+    link_surat_sehat,
+
   } = student;
 
 
@@ -271,6 +299,10 @@ export default function StudentDetail() {
     return siblings;
   };
 
+  const isCategoryComplete = (links = []) => {
+    return links.every(link => !!link);
+  };
+
   // Helper: render dokumen_surat as a single link (legacy arrays will use the first link)
   const renderDokumen = () => {
     if (!dokumen_surat) return <NoData />;
@@ -293,6 +325,58 @@ export default function StudentDetail() {
     if (!number) return "-";
     return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   };
+
+  const dokumenKategori = [
+    {
+      title: "Dokumen Pribadi",
+      links: {
+        KTP: link_ktp,
+        KK: link_kk,
+        "Akta Kelahiran": link_akta_kelahiran,
+        Ijazah: link_ijazah,
+        "Transkrip Nilai": link_transkrip_nilai,
+        SKCK: link_skck,
+        NPWP: link_npwp,
+      }
+    },
+    {
+      title: "Dokumen Keuangan",
+      links: {
+        "Sertifikat Tanah": link_sertifikat_tanah,
+        "Sertifikat Rumah": link_sertifikat_rumah,
+        PBB: link_pbb,
+        "KTP Ayah": link_ktp_ayah,
+        "KTP Ibu": link_ktp_ibu,
+        "Buku Nikah Ortu": link_buku_nikah_ortu,
+        "Surat Penghasilan": link_surat_penghasilan,
+        SKTM: link_sktm,
+      }
+    },
+    {
+      title: "Dokumen Keberangkatan",
+      links: {
+        Paspor: link_paspor,
+        COE: link_coe,
+        Visa: link_visa,
+        "Tiket Pesawat": link_tiket_pesawat,
+        "Asuransi Perjalanan": link_asuransi_perjalanan,
+        "Surat Sehat": link_surat_sehat,
+      }
+    }
+  ];
+
+  const CategoryStatus = ({ complete }) => (
+    complete ? (
+      <span className="flex items-center gap-1 text-green-600 font-medium">
+        ✔️ Completed
+      </span>
+    ) : (
+      <span className="flex items-center gap-1 text-red-600 font-medium">
+        ❌ Uncompleted
+      </span>
+    )
+  );
+
 
   return (
     <div className="page-container p-6 md:px-10 min-h-screen space-y-8">
@@ -508,7 +592,62 @@ export default function StudentDetail() {
 
       {/* Dokumen */}
       <Section title="Dokumen">
-        {renderDokumen()}
+        <div className="space-y-4">
+          {dokumenKategori.map((kategori, idx) => {
+            const values = Object.values(kategori.links);
+            const isComplete = isCategoryComplete(values);
+
+            return (
+              <div
+                key={idx}
+                className="border border-gray-200 rounded-2xl p-4 shadow-sm bg-white/90"
+              >
+                {/* Header kategori */}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-semibold text-[#0B2E4E] tracking-wide">
+                    {kategori.title}
+                  </p>
+
+                  {isComplete ? (
+                    <span className="px-3 py-1 text-sm rounded-lg font-medium bg-green-100 text-green-700">
+                      ✔️ Completed
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 text-sm rounded-lg font-medium bg-red-100 text-red-700">
+                      ❌ Uncompleted
+                    </span>
+                  )}
+                </div>
+
+                {/* Isi dokumen */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-[15px]">
+                  {Object.entries(kategori.links).map(([label, link]) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700 min-w-[160px]">
+                        {label}
+                      </span>
+
+                      {link ? (
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          Lihat Dokumen
+                        </a>
+                      ) : (
+                        <span className="text-red-500 italic text-sm">
+                          Belum diupload
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Section>
     </div>
   );

@@ -147,6 +147,31 @@ export default function StudentForm({ onDone, onCancel }) {
     rencana_pembayaran: "Biaya Mandiri",
     pasangan: { nama: "", nomor_hp: "" },
     status: "Aktif",
+
+    link_ktp: "",
+    link_kk: "",
+    link_akta_kelahiran: "",
+    link_ijazah: "",
+    link_transkrip_nilai: "",
+    link_skck: "",
+    link_npwp: "",
+
+    link_sertifikat_tanah: "",
+    link_sertifikat_rumah: "",
+    link_pbb: "",
+    link_ktp_ayah: "",
+    link_ktp_ibu: "",
+    link_buku_nikah_ortu: "",
+    link_surat_penghasilan: "",
+    link_sktm: "",
+
+    link_paspor: "",
+    link_coe: "",
+    link_visa: "",
+    link_tiket_pesawat: "",
+    link_asuransi_perjalanan: "",
+    link_surat_sehat: "",
+
   };
 
   const [data, setData] = useState(initialData);
@@ -568,8 +593,32 @@ export default function StudentForm({ onDone, onCancel }) {
           pasangan_hp: data.pasangan?.nomor_hp || null,
 
           status: data.status || "Aktif",
-          dokumen_surat: null,
           foto_url: fotoUrl,
+
+          link_ktp: data.link_ktp || null,
+          link_kk: data.link_kk || null,
+          link_akta_kelahiran: data.link_akta_kelahiran || null,
+          link_ijazah: data.link_ijazah || null,
+          link_transkrip_nilai: data.link_transkrip_nilai || null,
+          link_skck: data.link_skck || null,
+          link_npwp: data.link_npwp || null,
+
+          link_sertifikat_tanah: data.link_sertifikat_tanah || null,
+          link_sertifikat_rumah: data.link_sertifikat_rumah || null,
+          link_pbb: data.link_pbb || null,
+          link_ktp_ayah: data.link_ktp_ayah || null,
+          link_ktp_ibu: data.link_ktp_ibu || null,
+          link_buku_nikah_ortu: data.link_buku_nikah_ortu || null,
+          link_surat_penghasilan: data.link_surat_penghasilan || null,
+          link_sktm: data.link_sktm || null,
+
+          link_paspor: data.link_paspor || null,
+          link_coe: data.link_coe || null,
+          link_visa: data.link_visa || null,
+          link_tiket_pesawat: data.link_tiket_pesawat || null,
+          link_asuransi_perjalanan: data.link_asuransi_perjalanan || null,
+          link_surat_sehat: data.link_surat_sehat || null,
+
         };
 
         // Insert behavior:
@@ -648,7 +697,7 @@ export default function StudentForm({ onDone, onCancel }) {
           console.warn("Activity log failed", err);
         }
 
-        onDone && onDone();
+        navigate("/students");
       } catch (err) {
         console.error(err);
         setError(err.message || String(err));
@@ -847,7 +896,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("nama", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: Muhammad Ridho Darmawan"
-              // required
+                required
               />
             </div>
 
@@ -867,7 +916,7 @@ export default function StudentForm({ onDone, onCancel }) {
                   setField("nomor_ktp", onlyDigits);
                 }}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
 
@@ -878,7 +927,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.jenis_kelamin}
                 onChange={(e) => setField("jenis_kelamin", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="Laki-laki">Laki-laki</option>
                 <option value="Perempuan">Perempuan</option>
@@ -894,7 +943,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.tempat_lahir}
                 onChange={(e) => setField("tempat_lahir", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
 
@@ -906,7 +955,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.tanggal_lahir}
                 onChange={(e) => setField("tanggal_lahir", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
 
@@ -928,7 +977,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.agama}
                 onChange={(e) => setField("agama", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="Islam">Islam</option>
                 <option value="Kristen">Kristen</option>
@@ -977,7 +1026,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("nomor_wa", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: 089134643347"
-              // required
+                required
               />
             </div>
 
@@ -990,7 +1039,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("email", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: ridho@gmail.com"
-              // required
+                required
               />
             </div>
 
@@ -1017,7 +1066,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_jalan || ""}
                 onChange={(e) => setField("alamat_ktp_jalan", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
               <input
                 type="text"
@@ -1025,7 +1074,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_rt || ""}
                 onChange={(e) => setField("alamat_ktp_rt", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
               <input
                 type="text"
@@ -1033,7 +1082,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_rw || ""}
                 onChange={(e) => setField("alamat_ktp_rw", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
               <input
                 type="text"
@@ -1041,7 +1090,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_kelurahan || ""}
                 onChange={(e) => setField("alamat_ktp_kelurahan", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
               <input
                 type="text"
@@ -1049,7 +1098,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_kecamatan || ""}
                 onChange={(e) => setField("alamat_ktp_kecamatan", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
               <input
                 type="text"
@@ -1057,7 +1106,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.alamat_ktp_kota || ""}
                 onChange={(e) => setField("alamat_ktp_kota", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
           </div>
@@ -1077,7 +1126,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("tinggi_badan", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: 172"
-              // required
+                required
               />
             </div>
 
@@ -1091,7 +1140,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("berat_badan", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: 66"
-              // required
+                required
               />
             </div>
 
@@ -1105,7 +1154,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("lingkar_pinggang", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: 76"
-              // required
+                required
               />
             </div>
 
@@ -1119,7 +1168,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 onChange={(e) => setField("ukuran_kaki", e.target.value)}
                 className="p-2 border rounded"
                 placeholder="Ex: 26"
-              // required
+                required
               />
             </div>
 
@@ -1130,7 +1179,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.dominan_tangan}
                 onChange={(e) => setField("dominan_tangan", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="Kanan">Kanan</option>
                 <option value="Kiri">Kiri</option>
@@ -1148,7 +1197,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={tempHobi}
                 onChange={(e) => setTempHobi(e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+                required
               />
             </div>
 
@@ -1161,7 +1210,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={tempKeahlian}
                 onChange={(e) => setTempKeahlian(e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+                required
               />
             </div>
 
@@ -1174,7 +1223,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={tempKelebihan}
                 onChange={(e) => setTempKelebihan(e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+                required
               />
             </div>
 
@@ -1187,7 +1236,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.kekurangan}
                 onChange={(e) => setField("kekurangan", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
 
@@ -1200,7 +1249,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={tempTujuanKeJepang}
                 onChange={(e) => setTempTujuanKeJepang(e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+                required
               />
             </div>
 
@@ -1213,7 +1262,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={tempTujuanPulang}
                 onChange={(e) => setTempTujuanPulang(e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+                required
               />
             </div>
           </div>
@@ -1315,7 +1364,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 setField("pekerjaan", pekerjaanBaru);
               }}
               className="w-fit border rounded"
-            // required
+              required
             />
           </div>
 
@@ -1331,7 +1380,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.nama_perusahaan}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "nama_perusahaan", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1342,7 +1391,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.jenis_pekerjaan}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "jenis_pekerjaan", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1354,7 +1403,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.tahun_masuk}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_masuk", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1369,7 +1418,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.bulan_masuk}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_masuk", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1381,7 +1430,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.tahun_keluar}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "tahun_keluar", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1396,7 +1445,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={job.bulan_keluar}
                     onChange={(e) => handleNestedArray("pekerjaan", idx, "bulan_keluar", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
               </div>
@@ -1408,12 +1457,12 @@ export default function StudentForm({ onDone, onCancel }) {
             <div className="flex flex-col">
               <label className="mb-1.5 text-sm font-medium">Gaji Terakhir</label>
               <input
-                type="text"
+                type="number"
                 placeholder="Gaji Terakhir"
                 value={data.gaji_terakhir}
                 onChange={(e) => setField("gaji_terakhir", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
 
@@ -1426,7 +1475,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.pernah_tes_so}
                 onChange={(e) => setField("pernah_tes_so", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               />
             </div>
           </div>
@@ -1449,7 +1498,7 @@ export default function StudentForm({ onDone, onCancel }) {
                       handleNestedField("keluarga", parent, { ...data.keluarga[parent], nama: e.target.value })
                     }
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
                 <div className="flex flex-col">
@@ -1462,7 +1511,7 @@ export default function StudentForm({ onDone, onCancel }) {
                       handleNestedField("keluarga", parent, { ...data.keluarga[parent], usia: e.target.value })
                     }
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
                 <div className="flex flex-col">
@@ -1474,7 +1523,7 @@ export default function StudentForm({ onDone, onCancel }) {
                       handleNestedField("keluarga", parent, { ...data.keluarga[parent], pekerjaan: e.target.value })
                     }
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
                 <div className="flex flex-col">
@@ -1486,7 +1535,7 @@ export default function StudentForm({ onDone, onCancel }) {
                       handleNestedField("keluarga", parent, { ...data.keluarga[parent], nomor_hp: e.target.value })
                     }
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
               </div>
@@ -1509,7 +1558,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 setField("keluarga", { ...data.keluarga, saudara: saudaraBaru });
               }}
               className="w-fit border rounded"
-            // required
+              required
             />
           </div>
 
@@ -1524,7 +1573,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={s.jenis || "Adik Laki-laki"}
                     onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "jenis", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   >
                     <option value="Adik Laki-laki">Adik Laki-laki</option>
                     <option value="Adik Perempuan">Adik Perempuan</option>
@@ -1540,7 +1589,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={s.nama}
                     onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "nama", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1552,7 +1601,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={s.usia}
                     onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "usia", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
 
@@ -1563,7 +1612,7 @@ export default function StudentForm({ onDone, onCancel }) {
                     value={s.pekerjaan}
                     onChange={(e) => handleNestedArrayNested("keluarga", "saudara", idx, "pekerjaan", e.target.value)}
                     className="p-2 border rounded"
-                  // required
+                    required
                   />
                 </div>
               </div>
@@ -1582,7 +1631,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.health.merokok}
                 onChange={(e) => setField("health", { ...data.health, merokok: e.target.value === "true" })}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="true">Ya</option>
                 <option value="false">Tidak</option>
@@ -1595,7 +1644,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.health.alkohol}
                 onChange={(e) => setField("health", { ...data.health, alkohol: e.target.value === "true" })}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="true">Ya</option>
                 <option value="false">Tidak</option>
@@ -1608,7 +1657,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.health.paspor}
                 onChange={(e) => setField("health", { ...data.health, paspor: e.target.value === "true" })}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="true">Ya</option>
                 <option value="false">Tidak</option>
@@ -1621,7 +1670,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.health.sehat}
                 onChange={(e) => setField("health", { ...data.health, sehat: e.target.value === "true" })}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="true">Ya</option>
                 <option value="false">Tidak</option>
@@ -1657,21 +1706,241 @@ export default function StudentForm({ onDone, onCancel }) {
                 className="p-2 border rounded"
               />
             </div>
+          </div>
+        </section>
 
-            <div className="flex flex-col col-span-1">
-              <label className="mb-1.5 text-sm font-medium">Link Dokumen</label>
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">6.1 Dokumen Pribadi</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">KTP</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.dokumen_surat}
-                onChange={(e) => setField("dokumen_surat", e.target.value)}
+                value={data.link_ktp}
+                onChange={(e) => setField("link_ktp", e.target.value)}
                 className="p-2 border rounded resize-none"
-              // required
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">KK</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_kk}
+                onChange={(e) => setField("link_kk", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Akta Kelahiran</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_akta_kelahiran}
+                onChange={(e) => setField("link_akta_kelahiran", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Ijazah</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_ijazah}
+                onChange={(e) => setField("link_ijazah", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Transkrip Nilai</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_transkrip_nilai}
+                onChange={(e) => setField("link_transkrip_nilai", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">SKCK</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_skck}
+                onChange={(e) => setField("link_skck", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">NPWP</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_npwp}
+                onChange={(e) => setField("link_npwp", e.target.value)}
+                className="p-2 border rounded resize-none"
               />
             </div>
           </div>
         </section>
+
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">6.2 Dokumen Keuangan</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Sertifikat Tanah</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_sertifikat_tanah}
+                onChange={(e) => setField("link_sertifikat_tanah", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Sertifikat Rumah</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_sertifikat_rumah}
+                onChange={(e) => setField("link_sertifikat_rumah", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">VISA</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_visa}
+                onChange={(e) => setField("link_visa", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Tiket Pesawat</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_tiket_pesawat}
+                onChange={(e) => setField("link_tiket_pesawat", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Asuransi Perjalanan</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_asuransi_perjalanan}
+                onChange={(e) => setField("link_asuransi_perjalanan", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Surat Sehat</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_surat_sehat}
+                onChange={(e) => setField("link_surat_sehat", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">6.3 Dokumen Keberangkatan</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">PASPOR</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_paspor}
+                onChange={(e) => setField("link_paspor", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">COE</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_coe}
+                onChange={(e) => setField("link_coe", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">PBB</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_pbb}
+                onChange={(e) => setField("link_pbb", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">KTP Ayah</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_ktp_ayah}
+                onChange={(e) => setField("link_ktp_ayah", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">KTP Ibu</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_ktp_ibu}
+                onChange={(e) => setField("link_ktp_ibu", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Buku Nikah Ortu</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_buku_nikah_ortu}
+                onChange={(e) => setField("link_buku_nikah_ortu", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Surat Penghasilan</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_surat_penghasilan}
+                onChange={(e) => setField("link_surat_penghasilan", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">SKTM</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_sktm}
+                onChange={(e) => setField("link_sktm", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div>
+          </div>
+        </section>
+
+
 
         {/* 8. Program & Pasangan */}
         <section className="space-y-4">
@@ -1684,7 +1953,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.program}
                 onChange={(e) => setField("program", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="Magang">Magang</option>
                 <option value="Kerja">Kerja</option>
@@ -1697,7 +1966,7 @@ export default function StudentForm({ onDone, onCancel }) {
                 value={data.rencana_pembayaran}
                 onChange={(e) => setField("rencana_pembayaran", e.target.value)}
                 className="p-2 border rounded"
-              // required
+                required
               >
                 <option value="Biaya Mandiri">Biaya Mandiri</option>
                 <option value="Dana Talang">Dana Talang</option>
@@ -1738,7 +2007,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.angkatan}
               onChange={(e) => setField("angkatan", e.target.value)}
               className="p-2 border rounded"
-            // required
+              required
             />
           </div>
 
@@ -1749,7 +2018,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.tanggal_masuk}
               onChange={(e) => setField("tanggal_masuk", e.target.value)}
               className="p-2 border rounded"
-            // required
+              required
             />
           </div>
 
@@ -1759,7 +2028,7 @@ export default function StudentForm({ onDone, onCancel }) {
               value={data.nis}
               onChange={(e) => { setNisAuto(false); setField("nis", e.target.value); }}
               className="p-2 border rounded bg-slate-100"
-            // required
+              required
             />
           </div>
         </section>
