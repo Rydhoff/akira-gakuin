@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { supabase } from "../lib/supabaseClient"; 
+import { supabase } from "../lib/supabaseClient";
 import { Pencil, Trash2, Eye } from "lucide-react";
 
 export default function StudentTable({ rows, refresh }) {
@@ -201,7 +201,30 @@ export default function StudentTable({ rows, refresh }) {
         Penyakit_Bawaan: r.penyakit_bawaan || "",
         Pernah_Operasi: r.pernah_operasi || "",
         Alergi: r.alergi || "",
-        Dokumen_Surat: r.dokumen_surat || "",
+
+        Link_ktp: r.link_ktp || "",
+        Link_kk: r.link_kk || "",
+        Link_akta_kelahiran: r.link_akta_kelahiran || "",
+        Link_ijazah: r.link_ijazah || "",
+        Link_transkrip_nilai: r.link_transkrip_nilai || "",
+        Link_skck: r.link_skck || "",
+        Link_npwp: r.link_npwp || "",
+
+        Link_sertifikat_tanah: r.link_sertifikat_tanah || "",
+        Link_sertifikat_rumah: r.link_sertifikat_rumah || "",
+        Link_pbb: r.link_pbb || "",
+        Link_ktp_ayah: r.link_ktp_ayah || "",
+        Link_ktp_ibu: r.link_ktp_ibu || "",
+        Link_buku_nikah_ortu: r.link_buku_nikah_ortu || "",
+        Link_surat_penghasilan: r.link_surat_penghasilan || "",
+        Link_sktm: r.link_sktm || "",
+
+        Link_paspor: r.link_paspor || "",
+        Link_coe: r.link_coe || "",
+        Link_visa: r.link_visa || "",
+        Link_tiket_pesawat: r.link_tiket_pesawat || "",
+        Link_asuransi_perjalanan: r.link_asuransi_perjalanan || "",
+        Link_surat_sehat: r.link_surat_sehat || "",
 
         // 7. PROGRAM & PASANGAN
         Program: r.program || "",
