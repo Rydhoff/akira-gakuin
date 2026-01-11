@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import KeberangkatanTable from '../components/KeberangkatanTable';
 
-export default function Keberangkatan(){
+export default function Keberangkatan() {
   const [rows, setRows] = useState([]);
-  const load = async ()=> {
+  const load = async () => {
     const { data, error } = await supabase
       .from('students')
       .select('id, nis, nama, keberangkatan')
@@ -18,7 +18,7 @@ export default function Keberangkatan(){
     setRows(data || []);
   };
 
-  useEffect(()=>{ load(); },[]);
+  useEffect(() => { load(); }, []);
 
   return (
     <div className="page-container">

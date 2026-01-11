@@ -64,7 +64,7 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
   });
 };
 
-export default function StudentForm({ onDone, onCancel }) {
+export default function StudentForm() {
   const today = new Date().toISOString().slice(0, 10);
   const navigate = useNavigate();
 
@@ -148,30 +148,34 @@ export default function StudentForm({ onDone, onCancel }) {
     pasangan: { nama: "", nomor_hp: "" },
     status: "Aktif",
 
-    link_ktp: "",
-    link_kk: "",
+    // Dokumen Pribadi
+    link_ktp_pribadi: "",
     link_akta_kelahiran: "",
-    link_ijazah: "",
-    link_transkrip_nilai: "",
-    link_skck: "",
-    link_npwp: "",
+    link_kk_pribadi: "",
+    link_ijazah_sd: "",
+    link_ijazah_sltp: "",
+    link_ijazah_slta: "",
+    link_ijazah_pt: "",
+    link_bpjs_kesehatan: "",
 
-    link_sertifikat_tanah: "",
-    link_sertifikat_rumah: "",
+    // Dana Talang
+    link_ktp_ortu: "",
+    link_surat_nikah_ortu: "",
+    link_sertifikat_rumah_tanah: "",
+    link_surat_penghasilan_ortu: "",
+    link_ktp_saudara: "",
+    link_kk_saudara: "",
     link_pbb: "",
-    link_ktp_ayah: "",
-    link_ktp_ibu: "",
-    link_buku_nikah_ortu: "",
-    link_surat_penghasilan: "",
-    link_sktm: "",
+    link_surat_keterangan: "",
 
+    // Keberangkatan
+    link_kontrak_kerja: "",
     link_paspor: "",
-    link_coe: "",
     link_visa: "",
+    link_coe: "",
     link_tiket_pesawat: "",
-    link_asuransi_perjalanan: "",
-    link_surat_sehat: "",
-
+    link_ektkln: "",
+    foto_keberangkatan_url: "",
   };
 
   const [data, setData] = useState(initialData);
@@ -201,8 +205,6 @@ export default function StudentForm({ onDone, onCancel }) {
   }, []);
 
   const setField = (key, value) => setData((prev) => ({ ...prev, [key]: value }));
-  const handleArrayField = (field, value) =>
-    setData((prev) => ({ ...prev, [field]: value.split(",").map((v) => v.trim()) }));
   const handleNestedField = (parent, child, value) =>
     setData((prev) => ({ ...prev, [parent]: { ...prev[parent], [child]: value } }));
   const handleNestedArray = (parent, index, child, value) => {
@@ -595,29 +597,34 @@ export default function StudentForm({ onDone, onCancel }) {
           status: data.status || "Aktif",
           foto_url: fotoUrl,
 
-          link_ktp: data.link_ktp || null,
-          link_kk: data.link_kk || null,
+          // Dokumen Pribadi
+          link_ktp_pribadi: data.link_ktp_pribadi || null,
           link_akta_kelahiran: data.link_akta_kelahiran || null,
-          link_ijazah: data.link_ijazah || null,
-          link_transkrip_nilai: data.link_transkrip_nilai || null,
-          link_skck: data.link_skck || null,
-          link_npwp: data.link_npwp || null,
+          link_kk_pribadi: data.link_kk_pribadi || null,
+          link_ijazah_sd: data.link_ijazah_sd || null,
+          link_ijazah_sltp: data.link_ijazah_sltp || null,
+          link_ijazah_slta: data.link_ijazah_slta || null,
+          link_ijazah_pt: data.link_ijazah_pt || null,
+          link_bpjs_kesehatan: data.link_bpjs_kesehatan || null,
 
-          link_sertifikat_tanah: data.link_sertifikat_tanah || null,
-          link_sertifikat_rumah: data.link_sertifikat_rumah || null,
+          // Dana Talang
+          link_ktp_ortu: data.link_ktp_ortu || null,
+          link_surat_nikah_ortu: data.link_surat_nikah_ortu || null,
+          link_sertifikat_rumah_tanah: data.link_sertifikat_rumah_tanah || null,
+          link_surat_penghasilan_ortu: data.link_surat_penghasilan_ortu || null,
+          link_ktp_saudara: data.link_ktp_saudara || null,
+          link_kk_saudara: data.link_kk_saudara || null,
           link_pbb: data.link_pbb || null,
-          link_ktp_ayah: data.link_ktp_ayah || null,
-          link_ktp_ibu: data.link_ktp_ibu || null,
-          link_buku_nikah_ortu: data.link_buku_nikah_ortu || null,
-          link_surat_penghasilan: data.link_surat_penghasilan || null,
-          link_sktm: data.link_sktm || null,
+          link_surat_keterangan: data.link_surat_keterangan || null,
 
+          // Keberangkatan
+          link_kontrak_kerja: data.link_kontrak_kerja || null,
           link_paspor: data.link_paspor || null,
-          link_coe: data.link_coe || null,
           link_visa: data.link_visa || null,
+          link_coe: data.link_coe || null,
           link_tiket_pesawat: data.link_tiket_pesawat || null,
-          link_asuransi_perjalanan: data.link_asuransi_perjalanan || null,
-          link_surat_sehat: data.link_surat_sehat || null,
+          link_ektkln: data.link_ektkln || null,
+          foto_keberangkatan_url: data.foto_keberangkatan_url || null,
 
         };
 
@@ -1718,18 +1725,8 @@ export default function StudentForm({ onDone, onCancel }) {
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_ktp}
-                onChange={(e) => setField("link_ktp", e.target.value)}
-                className="p-2 border rounded resize-none"
-              />
-            </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">KK</label>
-              <input
-                type="text"
-                rows={4}
-                placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_kk}
-                onChange={(e) => setField("link_kk", e.target.value)}
+                value={data.link_ktp_pribadi}
+                onChange={(e) => setField("link_ktp_pribadi", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
@@ -1743,43 +1740,63 @@ export default function StudentForm({ onDone, onCancel }) {
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Ijazah</label>
+              <label className="text-sm font-medium mt-auto mb-auto">KK</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_ijazah}
-                onChange={(e) => setField("link_ijazah", e.target.value)}
+                value={data.link_kk_pribadi}
+                onChange={(e) => setField("link_kk_pribadi", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Transkrip Nilai</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Ijazah SD</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_transkrip_nilai}
-                onChange={(e) => setField("link_transkrip_nilai", e.target.value)}
+                value={data.link_ijazah_sd}
+                onChange={(e) => setField("link_ijazah_sd", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">SKCK</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Ijazah SLTP</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_skck}
-                onChange={(e) => setField("link_skck", e.target.value)}
+                value={data.link_ijazah_sltp}
+                onChange={(e) => setField("link_ijazah_sltp", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">NPWP</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Ijazah SLTA</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_npwp}
-                onChange={(e) => setField("link_npwp", e.target.value)}
+                value={data.link_ijazah_slta}
+                onChange={(e) => setField("link_ijazah_slta", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Ijazah Pendidikan Tinggi (D3/S1)</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_ijazah_pt}
+                onChange={(e) => setField("link_ijazah_pt", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">BPJS Kesehatan</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_bpjs_kesehatan}
+                onChange={(e) => setField("link_bpjs_kesehatan", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div>
@@ -1787,93 +1804,66 @@ export default function StudentForm({ onDone, onCancel }) {
         </section>
 
         <section className="space-y-4">
-          <h3 className="text-lg font-semibold">6.2 Dokumen Keuangan</h3>
+          <h3 className="text-lg font-semibold">6.2 Dokumen Dana Talang</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Sertifikat Tanah</label>
+              <label className="text-sm font-medium mt-auto mb-auto">KTP Orang Tua</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_sertifikat_tanah}
-                onChange={(e) => setField("link_sertifikat_tanah", e.target.value)}
+                value={data.link_ktp_ortu}
+                onChange={(e) => setField("link_ktp_ortu", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Sertifikat Rumah</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Surat Nikah Orang Tua</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_sertifikat_rumah}
-                onChange={(e) => setField("link_sertifikat_rumah", e.target.value)}
+                value={data.link_surat_nikah_ortu}
+                onChange={(e) => setField("link_surat_nikah_ortu", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">VISA</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Sertifikat Rumah/Tanah</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_visa}
-                onChange={(e) => setField("link_visa", e.target.value)}
+                value={data.link_sertifikat_rumah_tanah}
+                onChange={(e) => setField("link_sertifikat_rumah_tanah", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Tiket Pesawat</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Surat Penghasilan Orang Tua</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_tiket_pesawat}
-                onChange={(e) => setField("link_tiket_pesawat", e.target.value)}
+                value={data.link_surat_penghasilan_ortu}
+                onChange={(e) => setField("link_surat_penghasilan_ortu", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Asuransi Perjalanan</label>
+              <label className="text-sm font-medium mt-auto mb-auto">KTP Saudara</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_asuransi_perjalanan}
-                onChange={(e) => setField("link_asuransi_perjalanan", e.target.value)}
+                value={data.link_ktp_saudara}
+                onChange={(e) => setField("link_ktp_saudara", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Surat Sehat</label>
+              <label className="text-sm font-medium mt-auto mb-auto">KK Saudara</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_surat_sehat}
-                onChange={(e) => setField("link_surat_sehat", e.target.value)}
-                className="p-2 border rounded resize-none"
-              />
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <h3 className="text-lg font-semibold">6.3 Dokumen Keberangkatan</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">PASPOR</label>
-              <input
-                type="text"
-                rows={4}
-                placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_paspor}
-                onChange={(e) => setField("link_paspor", e.target.value)}
-                className="p-2 border rounded resize-none"
-              />
-            </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">COE</label>
-              <input
-                type="text"
-                rows={4}
-                placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_coe}
-                onChange={(e) => setField("link_coe", e.target.value)}
+                value={data.link_kk_saudara}
+                onChange={(e) => setField("link_kk_saudara", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
@@ -1887,53 +1877,90 @@ export default function StudentForm({ onDone, onCancel }) {
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">KTP Ayah</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Surat Keterangan</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_ktp_ayah}
-                onChange={(e) => setField("link_ktp_ayah", e.target.value)}
+                value={data.link_surat_keterangan}
+                onChange={(e) => setField("link_surat_keterangan", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">6.3 Dokumen Keberangkatan</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Kontrak Kerja</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_kontrak_kerja}
+                onChange={(e) => setField("link_kontrak_kerja", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">KTP Ibu</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Paspor</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_ktp_ibu}
-                onChange={(e) => setField("link_ktp_ibu", e.target.value)}
+                value={data.link_paspor}
+                onChange={(e) => setField("link_paspor", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Buku Nikah Ortu</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Visa</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_buku_nikah_ortu}
-                onChange={(e) => setField("link_buku_nikah_ortu", e.target.value)}
+                value={data.link_visa}
+                onChange={(e) => setField("link_visa", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">Surat Penghasilan</label>
+              <label className="text-sm font-medium mt-auto mb-auto">COE</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_surat_penghasilan}
-                onChange={(e) => setField("link_surat_penghasilan", e.target.value)}
+                value={data.link_coe}
+                onChange={(e) => setField("link_coe", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div><div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium mt-auto mb-auto">SKTM</label>
+              <label className="text-sm font-medium mt-auto mb-auto">Tiket Pesawat</label>
               <input
                 type="text"
                 rows={4}
                 placeholder="Contoh: https://drive.google.com/..."
-                value={data.link_sktm}
-                onChange={(e) => setField("link_sktm", e.target.value)}
+                value={data.link_tiket_pesawat}
+                onChange={(e) => setField("link_tiket_pesawat", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">E-KTKLN</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.link_ektkln}
+                onChange={(e) => setField("link_ektkln", e.target.value)}
+                className="p-2 border rounded resize-none"
+              />
+            </div><div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium mt-auto mb-auto">Foto Keberangkatan</label>
+              <input
+                type="text"
+                rows={4}
+                placeholder="Contoh: https://drive.google.com/..."
+                value={data.foto_keberangkatan_url}
+                onChange={(e) => setField("foto_keberangkatan_url", e.target.value)}
                 className="p-2 border rounded resize-none"
               />
             </div>

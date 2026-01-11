@@ -272,7 +272,6 @@ export default function StudentTable({ rows, refresh }) {
 
   return (
     <div className="card shadow-sm rounded-2xl p-6 bg-white overflow-x-auto">
-
       {/* SEARCH & FILTER & EXPORT */}
       <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
 

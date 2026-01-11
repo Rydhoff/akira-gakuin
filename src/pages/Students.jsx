@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import StudentTable from '../components/StudentTable';
@@ -7,7 +7,8 @@ export default function Students() {
   const [rows, setRows] = useState([]);
   const navigate = useNavigate();
 
-  const load = async () => {
+  // 🔹 1 function load saja (reusable)
+  const loadStudents = useCallback(async () => {
     const { data, error } = await supabase
       .from('students')
       .select('*')
@@ -20,15 +21,15 @@ export default function Students() {
     }
 
     setRows(data || []);
-  };
-
-  useEffect(() => {
-    load();
   }, []);
+
+  // 🔹 panggil sekali saat mount
+  useEffect(() => {
+    loadStudents();
+  }, [loadStudents]);
 
   return (
     <div className="page-container">
-
       {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-(--akira-gray)">
@@ -48,7 +49,7 @@ export default function Students() {
       {/* TABLE */}
       <StudentTable
         rows={rows}
-        refresh={load}
+        refresh={loadStudents}
         onEdit={(row) => navigate(`/students/${row.id}/edit`)}
       />
     </div>

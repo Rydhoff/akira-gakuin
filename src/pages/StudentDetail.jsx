@@ -212,8 +212,8 @@ export default function StudentDetail() {
     pasangan_hp,
 
     shiken,
-    ujian,
-    kompetensi,
+    // ujian,
+    // kompetensi,
     keberangkatan,
     status,
 
@@ -222,33 +222,40 @@ export default function StudentDetail() {
     tanggal_pengunduran,
 
     foto_url,
-
-    // Dokumen Pribadi
-    link_ktp,
-    link_kk,
+    // =====================
+    // DOKUMEN PRIBADI
+    // =====================
+    link_ktp_pribadi,
     link_akta_kelahiran,
-    link_ijazah,
-    link_transkrip_nilai,
-    link_skck,
-    link_npwp,
+    link_kk_pribadi,
+    link_ijazah_sd,
+    link_ijazah_sltp,
+    link_ijazah_slta,
+    link_ijazah_pt,
+    link_bpjs_kesehatan,
 
-    // Dokumen Keuangan
-    link_sertifikat_tanah,
-    link_sertifikat_rumah,
+    // =====================
+    // DOKUMEN DANA TALANG
+    // =====================
+    link_ktp_ortu,
+    link_surat_nikah_ortu,
+    link_sertifikat_rumah_tanah,
+    link_surat_penghasilan_ortu,
+    link_ktp_saudara,
+    link_kk_saudara,
     link_pbb,
-    link_ktp_ayah,
-    link_ktp_ibu,
-    link_buku_nikah_ortu,
-    link_surat_penghasilan,
-    link_sktm,
+    link_surat_keterangan,
 
-    // Dokumen Keberangkatan
+    // =====================
+    // DOKUMEN KEBERANGKATAN
+    // =====================
+    link_kontrak_kerja,
     link_paspor,
-    link_coe,
     link_visa,
+    link_coe,
     link_tiket_pesawat,
-    link_asuransi_perjalanan,
-    link_surat_sehat,
+    link_ektkln,
+    foto_keberangkatan_url,
 
   } = student;
 
@@ -303,15 +310,6 @@ export default function StudentDetail() {
     return links.every(link => !!link);
   };
 
-  // Helper: render dokumen_surat as a single link (legacy arrays will use the first link)
-  const renderDokumen = () => {
-    if (!dokumen_surat) return <NoData />;
-    let link = dokumen_surat || null;
-    return (
-      <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google Drive ({nama_lengkap})</a>
-    );
-  };
-
   const formatTanggal = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
@@ -330,40 +328,43 @@ export default function StudentDetail() {
     {
       title: "Dokumen Pribadi",
       links: {
-        KTP: link_ktp,
-        KK: link_kk,
+        "KTP Pribadi": link_ktp_pribadi,
         "Akta Kelahiran": link_akta_kelahiran,
-        Ijazah: link_ijazah,
-        "Transkrip Nilai": link_transkrip_nilai,
-        SKCK: link_skck,
-        NPWP: link_npwp,
-      }
+        "Kartu Keluarga": link_kk_pribadi,
+        "Ijazah SD": link_ijazah_sd,
+        "Ijazah SLTP": link_ijazah_sltp,
+        "Ijazah SLTA": link_ijazah_slta,
+        "Ijazah PT": link_ijazah_pt,
+        "BPJS Kesehatan": link_bpjs_kesehatan,
+      },
     },
     {
-      title: "Dokumen Keuangan",
+      title: "Dokumen Dana Talang",
       links: {
-        "Sertifikat Tanah": link_sertifikat_tanah,
-        "Sertifikat Rumah": link_sertifikat_rumah,
+        "KTP Orang Tua": link_ktp_ortu,
+        "Surat Nikah Orang Tua": link_surat_nikah_ortu,
+        "Sertifikat Rumah/Tanah": link_sertifikat_rumah_tanah,
+        "Surat Penghasilan Ortu": link_surat_penghasilan_ortu,
+        "KTP Saudara": link_ktp_saudara,
+        "KK Saudara": link_kk_saudara,
         PBB: link_pbb,
-        "KTP Ayah": link_ktp_ayah,
-        "KTP Ibu": link_ktp_ibu,
-        "Buku Nikah Ortu": link_buku_nikah_ortu,
-        "Surat Penghasilan": link_surat_penghasilan,
-        SKTM: link_sktm,
-      }
+        "Surat Keterangan": link_surat_keterangan,
+      },
     },
     {
       title: "Dokumen Keberangkatan",
       links: {
+        "Kontrak Kerja": link_kontrak_kerja,
         Paspor: link_paspor,
-        COE: link_coe,
         Visa: link_visa,
+        COE: link_coe,
         "Tiket Pesawat": link_tiket_pesawat,
-        "Asuransi Perjalanan": link_asuransi_perjalanan,
-        "Surat Sehat": link_surat_sehat,
-      }
-    }
+        "e-KTKLN": link_ektkln,
+        "Foto Keberangkatan": foto_keberangkatan_url,
+      },
+    },
   ];
+
 
   const CategoryStatus = ({ complete }) => (
     complete ? (
